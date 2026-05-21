@@ -1,0 +1,44 @@
+Add variable definitions: ```yaml
+web_packages:
+
+httpd
+mod_ssl
+php
+database_packages:
+
+mariadb-server
+mariadb
+common_packages:
+
+vim
+wget
+curl
+git
+
+2. **Create a playbook that uses external variables**:
+```bash
+nano variable-playbook.yml
+---
+- name: Playbook using external variables
+  hosts: managed_nodes
+  become: yes
+  vars_files:
+    - vars.yml
+    
+  tasks:
+    - name: Install web packages
+      yum:
+        name: "{{ web_packages }}"
+        state: present
+      when: inventory_hostname in groups['web_servers']
+      
+    - name: Install database packages
+      yum:
+        name: "{{ database_packages }}"
+        state: present
+      when: inventory_hostname in groups['database_servers']
+      
+    - name: Install common packages on all hosts
+      yum:
+        name: "{{ common_packages }}"
+        state: present
