@@ -1,0 +1,42 @@
+---
+- name: Dynamic Variable Creation
+  hosts: all
+  
+  tasks:
+    - name: Create dynamic variables based on facts
+      set_fact:
+        system_info: |
+          {{ ansible_hostname }}_{{ ansible_distribution | lower }}_{{ ansible_distribution_major_version }}
+        memory_category: "{{ 'high' if ansible_memtotal_mb > 4096 else 'medium' if ansible_memtotal_mb > 2048 else 'low' }}"
+        cpu_category: "{{ 'multi' if ansible_processor_cores > 1 else 'single' }}"
+        system_profile: "{{ memory_category }}_memory_{{ cpu_category }}_cpu"
+    
+    - name: Display dynamic variables
+      debug:
+        msg: |
+          System Info: {{ system_info }}
+          Memory Category: {{ memory_category }}
+          CPU Category: {{ cpu_category }}
+          System Profile: {{ system_profile }}
+    
+    - name: Create configuration based on system profile
+      set_fact:
+        app_config:
+          max_connections: "{{ 100 if system_profile.startswith('high') else 50 if system_profile.startswith('medium') else 25 }}"
+          worker_processes: "{{ ansible_processor_cores if cpu_category == 'multi' else 1 }}"
+          cache_enabled: "{{ memory_category != 'low' }}"
+    
+    - name: Display generated configuration
+      debug:
+        msg: |
+          Max Connections: {{ app_config.max_connections }}
+          Worker Processes: {{ app_config.worker_processes }}
+          Cache Enabled: {{ app_config.cache_enabled }}
+    
+    - name: Generate unique identifier
+      set_fact:
+        unique_id: "{{ ansible_hostname }}_{{ ansible_date_time.epoch }}"
+    
+    - name: Show unique identifier
+      debug:
+        msg: "Generated unique ID: {{ unique_id }}"
