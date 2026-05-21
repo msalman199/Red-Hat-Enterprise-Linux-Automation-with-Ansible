@@ -1,0 +1,40 @@
+---
+- name: Verify lab setup and configuration
+  hosts: managed_nodes
+  become: yes
+  gather_facts: yes
+  
+  tasks:
+    - name: Check if httpd is installed
+      yum:
+        list: httpd
+      register: httpd_check
+      
+    - name: Verify httpd service status
+      service:
+        name: httpd
+      register: httpd_status
+      
+    - name: Check if web content exists
+      stat:
+        path: /var/www/html/index.html
+      register: web_content
+      
+    - name: Display verification results
+      debug:
+        msg: |
+          HTTPD Package: {{ 'Installed' if httpd_check.results else 'Not Installed' }}
+          HTTPD Service: {{ httpd_status.status.ActiveState }}
+          Web Content: {{ 'Present' if web_content.stat.exists else 'Missing' }}
+          
+    - name: Test web connectivity
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}"
+        method: GET
+        status_code: 200
+      delegate_to: localhost
+      register: web_test
+      
+    - name: Display web test results
+      debug:
+        msg: "Web service is {{ 'responding' if web_test.status == 200 else 'not responding' }}"
