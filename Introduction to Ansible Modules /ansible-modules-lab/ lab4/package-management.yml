@@ -1,0 +1,28 @@
+---
+- name: Package Management with YUM Module
+  hosts: centos_nodes
+  become: yes
+  tasks:
+    - name: Install git package
+      yum:
+        name: git
+        state: present
+    
+    - name: Install multiple packages
+      yum:
+        name:
+          - wget
+          - curl
+          - vim
+        state: present
+    
+    - name: Update all packages
+      yum:
+        name: "*"
+        state: latest
+        update_cache: yes
+    
+    - name: Remove a specific package
+      yum:
+        name: telnet
+        state: absent
