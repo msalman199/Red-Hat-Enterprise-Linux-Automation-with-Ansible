@@ -1,0 +1,54 @@
+---
+- name: Hardware-Based Task Modifications
+  hosts: all
+  become: yes
+  vars:
+    memory_gb: "{{ (ansible_memtotal_mb / 1024) | round(1) }}"
+    is_low_memory: "{{ ansible_memtotal_mb < 2048 }}"
+    is_multi_core: "{{ ansible_processor_cores > 1 }}"
+  
+  tasks:
+    - name: Display hardware information
+      debug:
+        msg: |
+          Total Memory: {{ memory_gb }} GB
+          CPU Cores: {{ ansible_processor_cores }}
+          Architecture: {{ ansible_architecture }}
+          Low Memory System: {{ is_low_memory }}
+          Multi-core System: {{ is_multi_core }}
+    
+    - name: Configure swap for low memory systems
+      debug:
+        msg: "Would configure additional swap space for low memory system"
+      when: is_low_memory
+    
+    - name: Optimize for multi-core systems
+      lineinfile:
+        path: /etc/sysctl.conf
+        line: "kernel.sched_migration_cost_ns = 5000000"
+        create: yes
+      when: is_multi_core
+      notify: reload sysctl
+    
+    - name: Set conservative CPU governor for single core systems
+      debug:
+        msg: "Would set conservative CPU governor for single core system"
+      when: not is_multi_core
+    
+    - name: Configure application based on available memory
+      template:
+        content: |
+          # Application Configuration
+          max_memory={{ (ansible_memtotal_mb * 0.7) | int }}m
+          worker_processes={{ ansible_processor_cores if is_multi_core else 1 }}
+          cache_size={{ (ansible_memtotal_mb * 0.1) | int }}m
+        dest: /tmp/app_config.conf
+    
+    - name: Display generated configuration
+      debug:
+        msg: "Configuration file created based on system specifications"
+  
+  handlers:
+    - name: reload sysctl
+      command: sysctl -p
+      ignore_errors: yes
