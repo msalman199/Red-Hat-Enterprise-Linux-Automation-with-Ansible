@@ -1,0 +1,38 @@
+---
+- name: Exploring Ansible Facts
+  hosts: all
+  gather_facts: yes
+  
+  tasks:
+    - name: Display all available facts
+      debug:
+        var: ansible_facts
+      when: inventory_hostname == groups['all'][0]  # Only show for first host
+    
+    - name: Show basic system information
+      debug:
+        msg: |
+          Hostname: {{ ansible_hostname }}
+          Operating System: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Architecture: {{ ansible_architecture }}
+          Kernel: {{ ansible_kernel }}
+          Total Memory: {{ ansible_memtotal_mb }} MB
+          CPU Cores: {{ ansible_processor_cores }}
+    
+    - name: Display network information
+      debug:
+        msg: |
+          IP Address: {{ ansible_default_ipv4.address }}
+          Network Interface: {{ ansible_default_ipv4.interface }}
+          Gateway: {{ ansible_default_ipv4.gateway }}
+    
+    - name: Show disk information
+      debug:
+        msg: |
+          Mount Point: {{ item.mount }}
+          Device: {{ item.device }}
+          Filesystem: {{ item.fstype }}
+          Size: {{ item.size_total | human_readable }}
+          Available: {{ item.size_available | human_readable }}
+      loop: "{{ ansible_mounts }}"
+      when: item.mount == "/"
