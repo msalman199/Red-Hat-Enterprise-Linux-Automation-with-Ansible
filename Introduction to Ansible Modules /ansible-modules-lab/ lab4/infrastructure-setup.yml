@@ -1,0 +1,85 @@
+---
+- name: Complete Infrastructure Setup
+  hosts: all
+  become: yes
+  vars:
+    web_packages_redhat:
+      - httpd
+      - mod_ssl
+      - firewalld
+    web_packages_debian:
+      - apache2
+      - ssl-cert
+      - ufw
+    common_packages:
+      - git
+      - wget
+      - curl
+      - vim
+      - htop
+  
+  tasks:
+    - name: Update package cache
+      package:
+        name: "*"
+        state: latest
+      when: ansible_os_family == "RedHat"
+    
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        upgrade: dist
+      when: ansible_os_family == "Debian"
+    
+    - name: Install common packages
+      package:
+        name: "{{ common_packages }}"
+        state: present
+    
+    - name: Install web server packages on Red Hat family
+      yum:
+        name: "{{ web_packages_redhat }}"
+        state: present
+      when: ansible_os_family == "RedHat"
+    
+    - name: Install web server packages on Debian family
+      apt:
+        name: "{{ web_packages_debian }}"
+        state: present
+      when: ansible_os_family == "Debian"
+    
+    - name: Start and enable web server
+      service:
+        name: "{{ 'httpd' if ansible_os_family == 'RedHat' else 'apache2' }}"
+        state: started
+        enabled: yes
+    
+    - name: Start and enable firewall
+      service:
+        name: "{{ 'firewalld' if ansible_os_family == 'RedHat' else 'ufw' }}"
+        state: started
+        enabled: yes
+    
+    - name: Create a simple index page
+      copy:
+        content: |
+          <html>
+          <head><title>Ansible Managed Server</title></head>
+          <body>
+          <h1>Welcome to {{ inventory_hostname }}</h1>
+          <p>This server is managed by Ansible</p>
+          <p>OS Family: {{ ansible_os_family }}</p>
+          <p>Distribution: {{ ansible_distribution }}</p>
+          </body>
+          </html>
+        dest: "{{ '/var/www/html/index.html' if ansible_os_family == 'RedHat' else '/var/www/html/index.html' }}"
+        owner: "{{ 'apache' if ansible_os_family == 'RedHat' else 'www-data' }}"
+        group: "{{ 'apache' if ansible_os_family == 'RedHat' else 'www-data' }}"
+        mode: '0644'
+      notify: restart web server
+  
+  handlers:
+    - name: restart web server
+      service:
+        name: "{{ 'httpd' if ansible_os_family == 'RedHat' else 'apache2' }}"
+        state: restarted
