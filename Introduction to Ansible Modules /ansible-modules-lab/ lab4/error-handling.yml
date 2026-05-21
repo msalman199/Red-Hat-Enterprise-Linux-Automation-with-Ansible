@@ -1,0 +1,37 @@
+---
+- name: Error Handling in Ansible Modules
+  hosts: all
+  become: yes
+  tasks:
+    - name: Attempt to install a package that might not exist
+      package:
+        name: non-existent-package
+        state: present
+      ignore_errors: yes
+      register: package_result
+    
+    - name: Display error message if package installation failed
+      debug:
+        msg: "Package installation failed: {{ package_result.msg }}"
+      when: package_result.failed
+    
+    - name: Try to start a service with error handling
+      service:
+        name: non-existent-service
+        state: started
+      register: service_result
+      failed_when: false
+    
+    - name: Handle service start failure
+      debug:
+        msg: "Service could not be started: {{ service_result.msg }}"
+      when: service_result.rc != 0
+    
+    - name: Ensure critical package is installed
+      package:
+        name: curl
+        state: present
+      register: critical_package
+      until: critical_package is succeeded
+      retries: 3
+      delay: 5
