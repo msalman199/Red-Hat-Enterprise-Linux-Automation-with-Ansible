@@ -1,0 +1,37 @@
+# YAML Static Inventory File
+all:
+  children:
+    webservers:
+      hosts:
+        web1:
+          ansible_host: 192.168.1.10
+          ansible_user: student
+          server_role: frontend
+          http_port: 80
+        web2:
+          ansible_host: 192.168.1.11
+          ansible_user: student
+          server_role: frontend
+          http_port: 80
+      vars:
+        max_clients: 200
+        document_root: /var/www/html
+    
+    databases:
+      hosts:
+        db1:
+          ansible_host: 192.168.1.20
+          ansible_user: student
+          server_role: backend
+          mysql_port: 3306
+      vars:
+        max_connections: 100
+        mysql_datadir: /var/lib/mysql
+    
+    production:
+      children:
+        webservers:
+        databases:
+      vars:
+        environment: production
+        backup_schedule: "0 2 * * *"
