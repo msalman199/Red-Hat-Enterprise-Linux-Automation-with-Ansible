@@ -1,0 +1,19 @@
+---
+- name: Display Custom Facts
+  hosts: all
+  
+  tasks:
+    - name: Show custom application facts
+      debug:
+        msg: |
+          App Name: {{ ansible_local.application.application.name }}
+          App Version: {{ ansible_local.application.application.version }}
+          App Status: {{ ansible_local.application.application.status }}
+          Last Updated: {{ ansible_local.application.application.last_updated }}
+    
+    - name: Show custom health facts
+      debug:
+        msg: |
+          System Uptime: {{ ansible_local.health.system_health.uptime_days }} days
+          Load Average: {{ ansible_local.health.system_health.load_average }}
+          Root Disk Usage: {{ ansible_local.health.system_health.disk_usage_root }}%
