@@ -1,0 +1,43 @@
+---
+- name: Variables and Facts Demonstration
+  hosts: all
+  vars:
+    # Simple string variable
+    application_name: "WebServer"
+    
+    # Numeric variable
+    port_number: 8080
+    
+    # Boolean variable
+    enable_ssl: true
+    
+    # List variable
+    required_packages:
+      - httpd
+      - firewalld
+      - vim
+    
+    # Dictionary variable
+    database_config:
+      host: "localhost"
+      port: 3306
+      name: "webapp_db"
+      user: "webapp_user"
+  
+  tasks:
+    - name: Display application information
+      debug:
+        msg: "Setting up {{ application_name }} on port {{ port_number }}"
+    
+    - name: Show SSL status
+      debug:
+        msg: "SSL is {{ 'enabled' if enable_ssl else 'disabled' }}"
+    
+    - name: Display required packages
+      debug:
+        msg: "Installing package: {{ item }}"
+      loop: "{{ required_packages }}"
+    
+    - name: Show database configuration
+      debug:
+        msg: "Database: {{ database_config.name }} on {{ database_config.host }}:{{ database_config.port }}"
