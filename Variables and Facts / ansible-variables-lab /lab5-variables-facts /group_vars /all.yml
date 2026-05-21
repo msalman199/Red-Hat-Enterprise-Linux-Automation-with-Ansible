@@ -1,0 +1,17 @@
+---
+# Application Configuration
+app_name: "MyWebApp"
+app_version: "2.1.0"
+app_port: 9090
+
+# System Configuration
+max_connections: 100
+timeout_seconds: 30
+
+# Environment Settings
+environment: "production"
+debug_mode: false
+
+# File paths
+log_directory: "/var/log/myapp"
+config_directory: "/etc/myapp"
