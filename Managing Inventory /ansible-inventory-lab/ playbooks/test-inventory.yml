@@ -1,0 +1,27 @@
+---
+- name: Test Inventory Configuration
+  hosts: all
+  gather_facts: yes
+  tasks:
+    - name: Display host information
+      debug:
+        msg: |
+          Host: {{ inventory_hostname }}
+          IP: {{ ansible_host }}
+          User: {{ ansible_user }}
+          Group: {{ group_names }}
+          
+    - name: Test connectivity
+      ping:
+      
+    - name: Display system information
+      debug:
+        msg: |
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Architecture: {{ ansible_architecture }}
+          Hostname: {{ ansible_hostname }}
+          
+    - name: Show custom variables
+      debug:
+        var: hostvars[inventory_hostname]
+      when: inventory_hostname in hostvars
