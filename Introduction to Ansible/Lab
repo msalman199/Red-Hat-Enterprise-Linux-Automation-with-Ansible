@@ -1,0 +1,36 @@
+Task 1: Install Ansible on the Control Node
+Objective: Install Ansible on the Linux machine.
+
+Steps:
+
+Open the terminal and run the following commands to install Ansible on your system:
+
+sudo apt update
+sudo apt install ansible
+Verify the installation:
+
+ansible --version
+Task 2: Set up a Basic Inventory
+Objective: Create a basic inventory file to list managed hosts.
+
+Steps:
+
+Create an inventory file by running:
+
+sudo nano /etc/ansible/hosts
+Add a line for the managed host (localhost in this case):
+
+[local]
+localhost ansible_connection=local
+Save the file and exit the editor.
+
+Task 3: Run a Simple Ping Command
+Objective: Test the Ansible setup by running a "ping" command on the managed host.
+
+Steps:
+
+Run the following Ansible ping command to check connectivity:
+
+ansible local -m ping
+If successful, Ansible will return a pong response.
+
