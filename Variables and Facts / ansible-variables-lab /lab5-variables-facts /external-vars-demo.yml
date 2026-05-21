@@ -1,0 +1,19 @@
+---
+- name: Using External Variables
+  hosts: all
+  
+  tasks:
+    - name: Display application details
+      debug:
+        msg: |
+          Application: {{ app_name }}
+          Version: {{ app_version }}
+          Port: {{ app_port }}
+          Environment: {{ environment }}
+    
+    - name: Show configuration paths
+      debug:
+        msg: |
+          Log Directory: {{ log_directory }}
+          Config Directory: {{ config_directory }}
+          Max Connections: {{ max_connections }}
