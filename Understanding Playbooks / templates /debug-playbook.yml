@@ -1,0 +1,13 @@
+Add this content: ```yaml
+name: Debug playbook variables hosts: managed_nodes gather_facts: yes
+
+tasks:
+
+name: Display all variables for the host debug: var: hostvars[inventory_hostname]
+
+name: Display specific facts debug: msg: | Hostname: {{ ansible_hostname }} IP Address: {{ ansible_default_ipv4.address }} OS: {{ ansible_distribution }}
+
+
+3. **Run the debug playbook**:
+```bash
+ansible-playbook -i inventory.ini debug-playbook.yml
