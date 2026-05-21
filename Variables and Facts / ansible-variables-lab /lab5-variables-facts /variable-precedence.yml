@@ -1,0 +1,43 @@
+---
+- name: Variable Precedence Demonstration
+  hosts: all
+  vars:
+    environment: "playbook_level"
+    database_host: "playbook.example.com"
+    debug_level: "info"
+  
+  tasks:
+    - name: Display variables from different sources
+      debug:
+        msg: |
+          Environment: {{ environment }}
+          Database Host: {{ database_host }}
+          Debug Level: {{ debug_level }}
+          Custom Variable: {{ custom_var | default('not_defined') }}
+    
+    - name: Set task-level variable
+      set_fact:
+        task_variable: "set_at_task_level"
+        environment: "overridden_by_task"
+    
+    - name: Display updated variables
+      debug:
+        msg: |
+          Environment (now): {{ environment }}
+          Task Variable: {{ task_variable }}
+    
+    - name: Register command output as variable
+      command: date +%Y-%m-%d
+      register: current_date
+    
+    - name: Use registered variable
+      debug:
+        msg: "Today's date is: {{ current_date.stdout }}"
+    
+    - name: Combine variables with facts
+      debug:
+        msg: |
+          System: {{ ansible_hostname }}
+          Environment: {{ environment }}
+          Date: {{ current_date.stdout }}
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
