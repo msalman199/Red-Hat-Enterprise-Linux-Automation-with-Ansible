@@ -1,0 +1,50 @@
+---
+- name: Install and configure a package on remote hosts
+  hosts: managed_nodes
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    package_name: httpd
+    service_name: httpd
+    
+  tasks:
+    - name: Install the specified package
+      yum:
+        name: "{{ package_name }}"
+        state: present
+      notify: start and enable service
+      
+    - name: Ensure the service is running
+      service:
+        name: "{{ service_name }}"
+        state: started
+        enabled: yes
+        
+    - name: Create a simple index.html file
+      copy:
+        content: |
+          <html>
+          <head><title>Ansible Lab 2</title></head>
+          <body>
+          <h1>Welcome to Ansible Playbook Lab!</h1>
+          <p>This page was created by an Ansible playbook.</p>
+          </body>
+          </html>
+        dest: /var/www/html/index.html
+        owner: apache
+        group: apache
+        mode: '0644'
+      notify: restart web service
+        
+  handlers:
+    - name: start and enable service
+      service:
+        name: "{{ service_name }}"
+        state: started
+        enabled: yes
+        
+    - name: restart web service
+      service:
+        name: "{{ service_name }}"
+        state: restarted
