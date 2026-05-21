@@ -1,0 +1,53 @@
+---
+- name: OS-Specific Task Execution
+  hosts: all
+  become: yes
+  vars:
+    web_service_name: "{{ 'httpd' if ansible_os_family == 'RedHat' else 'apache2' }}"
+    package_manager: "{{ 'yum' if ansible_os_family == 'RedHat' else 'apt' }}"
+  
+  tasks:
+    - name: Display detected OS information
+      debug:
+        msg: |
+          OS Family: {{ ansible_os_family }}
+          Distribution: {{ ansible_distribution }}
+          Version: {{ ansible_distribution_version }}
+          Package Manager: {{ package_manager }}
+          Web Service: {{ web_service_name }}
+    
+    - name: Install web server on RedHat family
+      yum:
+        name: httpd
+        state: present
+      when: ansible_os_family == "RedHat"
+    
+    - name: Install web server on Debian family
+      apt:
+        name: apache2
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+    
+    - name: Configure firewall for RedHat systems
+      firewalld:
+        service: http
+        permanent: yes
+        state: enabled
+        immediate: yes
+      when: ansible_os_family == "RedHat"
+      ignore_errors: yes
+    
+    - name: Configure UFW for Debian systems
+      ufw:
+        rule: allow
+        port: '80'
+        proto: tcp
+      when: ansible_os_family == "Debian"
+      ignore_errors: yes
+    
+    - name: Start and enable web service
+      systemd:
+        name: "{{ web_service_name }}"
+        state: started
+        enabled: yes
