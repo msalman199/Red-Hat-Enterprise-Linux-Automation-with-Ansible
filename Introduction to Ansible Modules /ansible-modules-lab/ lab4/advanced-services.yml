@@ -1,0 +1,50 @@
+---
+- name: Advanced Service Management
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install and configure SSH service
+      block:
+        - name: Ensure SSH is installed
+          package:
+            name: "{{ 'openssh-server' if ansible_os_family == 'Debian' else 'openssh-server' }}"
+            state: present
+        
+        - name: Start SSH service
+          service:
+            name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+            state: started
+            enabled: yes
+        
+        - name: Reload SSH service configuration
+          service:
+            name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+            state: reloaded
+    
+    - name: Manage firewall service
+      block:
+        - name: Install firewall on Red Hat family
+          yum:
+            name: firewalld
+            state: present
+          when: ansible_os_family == "RedHat"
+        
+        - name: Start firewall service on Red Hat family
+          service:
+            name: firewalld
+            state: started
+            enabled: yes
+          when: ansible_os_family == "RedHat"
+        
+        - name: Install UFW on Debian family
+          apt:
+            name: ufw
+            state: present
+          when: ansible_os_family == "Debian"
+        
+        - name: Enable UFW on Debian family
+          service:
+            name: ufw
+            state: started
+            enabled: yes
+          when: ansible_os_family == "Debian"
