@@ -1,0 +1,38 @@
+---
+- name: Package Management with APT Module
+  hosts: ubuntu_nodes
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+    
+    - name: Install git package
+      apt:
+        name: git
+        state: present
+    
+    - name: Install multiple packages
+      apt:
+        name:
+          - wget
+          - curl
+          - vim
+          - htop
+        state: present
+    
+    - name: Upgrade all packages
+      apt:
+        upgrade: dist
+        update_cache: yes
+    
+    - name: Remove unnecessary packages
+      apt:
+        autoremove: yes
+    
+    - name: Remove a specific package
+      apt:
+        name: nano
+        state: absent
+        purge: yes
