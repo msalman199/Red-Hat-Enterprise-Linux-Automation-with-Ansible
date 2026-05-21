@@ -1,0 +1,91 @@
+---
+- name: Enhanced package installation and configuration
+  hosts: managed_nodes
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    packages:
+      - httpd
+      - firewalld
+      - wget
+    web_port: 80
+    document_root: /var/www/html
+    
+  pre_tasks:
+    - name: Update package cache
+      yum:
+        update_cache: yes
+      tags: always
+      
+  tasks:
+    - name: Install required packages
+      yum:
+        name: "{{ packages }}"
+        state: present
+      notify:
+        - start httpd
+        - start firewalld
+      tags: packages
+      
+    - name: Configure firewall for web traffic
+      firewalld:
+        service: http
+        permanent: yes
+        state: enabled
+        immediate: yes
+      notify: reload firewall
+      tags: firewall
+      
+    - name: Create custom web content
+      template:
+        src: index.html.j2
+        dest: "{{ document_root }}/index.html"
+        owner: apache
+        group: apache
+        mode: '0644'
+      notify: restart httpd
+      tags: content
+      
+    - name: Ensure web service is running and enabled
+      service:
+        name: httpd
+        state: started
+        enabled: yes
+      tags: services
+      
+    - name: Verify web service is responding
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ web_port }}"
+        method: GET
+        status_code: 200
+      delegate_to: localhost
+      tags: verification
+      
+  handlers:
+    - name: start httpd
+      service:
+        name: httpd
+        state: started
+        enabled: yes
+        
+    - name: restart httpd
+      service:
+        name: httpd
+        state: restarted
+        
+    - name: start firewalld
+      service:
+        name: firewalld
+        state: started
+        enabled: yes
+        
+    - name: reload firewall
+      service:
+        name: firewalld
+        state: reloaded
+        
+  post_tasks:
+    - name: Display completion message
+      debug:
+        msg: "Playbook execution completed successfully on {{ inventory_hostname }}"
