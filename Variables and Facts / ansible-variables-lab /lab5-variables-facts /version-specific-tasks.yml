@@ -1,0 +1,50 @@
+---
+- name: Version-Specific Task Execution
+  hosts: all
+  become: yes
+  
+  tasks:
+    - name: Display version information
+      debug:
+        msg: |
+          Distribution: {{ ansible_distribution }}
+          Version: {{ ansible_distribution_version }}
+          Major Version: {{ ansible_distribution_major_version }}
+    
+    - name: Install Python 3 on older CentOS versions
+      yum:
+        name: python3
+        state: present
+      when: 
+        - ansible_distribution == "CentOS"
+        - ansible_distribution_major_version | int < 8
+    
+    - name: Use dnf for newer RHEL/CentOS versions
+      dnf:
+        name: git
+        state: present
+      when:
+        - ansible_os_family == "RedHat"
+        - ansible_distribution_major_version | int >= 8
+    
+    - name: Use yum for older RHEL/CentOS versions
+      yum:
+        name: git
+        state: present
+      when:
+        - ansible_os_family == "RedHat"
+        - ansible_distribution_major_version | int < 8
+    
+    - name: Configure systemd service (modern systems)
+      systemd:
+        name: sshd
+        state: started
+        enabled: yes
+      when: ansible_service_mgr == "systemd"
+    
+    - name: Configure service with service module (older systems)
+      service:
+        name: ssh
+        state: started
+        enabled: yes
+      when: ansible_service_mgr != "systemd"
