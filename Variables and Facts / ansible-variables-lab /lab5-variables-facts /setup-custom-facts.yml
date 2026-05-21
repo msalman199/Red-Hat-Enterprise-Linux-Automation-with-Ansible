@@ -1,0 +1,39 @@
+---
+- name: Setup Custom Facts
+  hosts: all
+  become: yes
+  
+  tasks:
+    - name: Create custom facts directory
+      file:
+        path: /etc/ansible/facts.d
+        state: directory
+        mode: '0755'
+    
+    - name: Create custom application facts
+      copy:
+        content: |
+          #!/bin/bash
+          echo "{"
+          echo "  \"application\": {"
+          echo "    \"name\": \"MyCustomApp\","
+          echo "    \"version\": \"1.0.0\","
+          echo "    \"status\": \"active\","
+          echo "    \"last_updated\": \"$(date -I)\""
+          echo "  }"
+          echo "}"
+        dest: /etc/ansible/facts.d/application.fact
+        mode: '0755'
+    
+    - name: Create system health facts
+      copy:
+        content: |
+          [system_health]
+          uptime_days={{ ansible_uptime_seconds | int // 86400 }}
+          load_average={{ ansible_loadavg.1m }}
+          disk_usage_root={{ (ansible_mounts | selectattr('mount', 'equalto', '/') | first).size_used / (ansible_mounts | selectattr('mount', 'equalto', '/') | first).size_total * 100 | round(2) }}
+        dest: /etc/ansible/facts.d/health.fact
+        mode: '0644'
+    
+    - name: Refresh facts to include custom facts
+      setup:
