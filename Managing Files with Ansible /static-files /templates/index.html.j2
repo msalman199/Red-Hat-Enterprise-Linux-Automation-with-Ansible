@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ server_name }} - Dynamic Content</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .info-box { background: #f4f4f4; padding: 20px; margin: 10px 0; border-radius: 5px; }
+        .feature { color: green; }
+        .disabled { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Welcome to {{ server_name }}</h1>
+    
+    <div class="info-box">
+        <h2>Server Information</h2>
+        <p><strong>Hostname:</strong> {{ inventory_hostname }}</p>
+        <p><strong>IP Address:</strong> {{ ansible_default_ipv4.address }}</p>
+        <p><strong>Environment:</strong> {{ environment }}</p>
+        <p><strong>Application Port:</strong> {{ app_port }}</p>
+        <p><strong>Max Connections:</strong> {{ max_connections }}</p>
+    </div>
+    
+    <div class="info-box">
+        <h2>System Specifications</h2>
+        <p><strong>Total Memory:</strong> {{ ansible_memtotal_mb }}MB</p>
+        <p><strong>CPU Cores:</strong> {{ ansible_processor_vcpus }}</p>
+        <p><strong>OS:</strong> {{ ansible_distribution }} {{ ansible_distribution_version }}</p>
+    </div>
+    
+    <div class="info-box">
+        <h2>Feature Status</h2>
+        {% for feature, enabled in feature_flags.items() %}
+        <p><strong>{{ feature | title }}:</strong> 
+        <span class="{% if enabled %}feature{% else %}disabled{% endif %}">
+            {{ 'Enabled' if enabled else 'Disabled' }}
+        </span></p>
+        {% endfor %}
+    </div>
+    
+    <div class="info-box">
+        <h2>Custom Configuration</h2>
+        {% if custom_vars is defined %}
+        {% for key, value in custom_vars.items() %}
+        <p><strong>{{ key | replace('_', ' ') | title }}:</strong> {{ value }}</p>
+        {% endfor %}
+        {% endif %}
+    </div>
+    
+    <div class="info-box">
+        <h2>Server Aliases</h2>
+        {% if server_aliases is defined %}
+        <ul>
+        {% for alias in server_aliases %}
+        <li>{{ alias }}</li>
+        {% endfor %}
+        </ul>
+        {% else %}
+        <p>No aliases configured</p>
+        {% endif %}
+    </div>
+    
+    <footer>
+        <p><small>Generated on {{ ansible_date_time.date }} at {{ ansible_date_time.time }}</small></p>
+    </footer>
+</body>
+</html>
