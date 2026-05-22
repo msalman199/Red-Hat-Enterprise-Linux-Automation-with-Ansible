@@ -1,0 +1,31 @@
+---
+- name: Install and Configure Apache Web Server
+  hosts: webservers
+  become: yes
+  vars:
+    apache_package: httpd
+    apache_service: httpd
+    document_root: /var/www/html
+    
+  tasks:
+    - name: Update system packages
+      yum:
+        name: '*'
+        state: latest
+        update_cache: yes
+      tags: update
+
+    - name: Install Apache web server
+      yum:
+        name: "{{ apache_package }}"
+        state: present
+      tags: install
+
+    - name: Install additional packages
+      yum:
+        name:
+          - wget
+          - curl
+          - vim
+        state: present
+      tags: install
