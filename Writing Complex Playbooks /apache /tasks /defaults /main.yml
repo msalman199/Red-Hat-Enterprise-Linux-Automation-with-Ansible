@@ -1,0 +1,5 @@
+---
+web_user: "webadmin"
+document_root: "/var/www/html"
+app_name: "webapp"
+server_name: "{{ ansible_fqdn }}"
