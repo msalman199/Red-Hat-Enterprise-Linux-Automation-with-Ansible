@@ -1,0 +1,71 @@
+---
+- name: Deploy Dynamic Configuration Templates
+  hosts: webservers
+  become: yes
+  vars:
+    config_backup_dir: /backup/templates
+  
+  tasks:
+    - name: Ensure backup directory exists
+      file:
+        path: "{{ config_backup_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Ensure document root directories exist
+      file:
+        path: "{{ document_root }}"
+        state: directory
+        owner: apache
+        group: apache
+        mode: '0755'
+
+    - name: Deploy virtual host configuration from template
+      template:
+        src: vhost.conf.j2
+        dest: /etc/httpd/conf.d/{{ server_name }}.conf
+        owner: root
+        group: root
+        mode: '0644'
+        backup: yes
+        validate: 'httpd -t -f %s'
+      notify: 
+        - restart apache
+        - reload apache
+
+    - name: Deploy system information configuration
+      template:
+        src: system-info.conf.j2
+        dest: /etc/system-info.conf
+        owner: root
+        group: root
+        mode: '0644'
+        backup: yes
+
+    - name: Create dynamic index.html from template
+      template:
+        src: index.html.j2
+        dest: "{{ document_root }}/index.html"
+        owner: apache
+        group: apache
+        mode: '0644'
+
+    - name: Display template variables for verification
+      debug:
+        msg: |
+          Server: {{ server_name }}
+          Document Root: {{ document_root }}
+          Environment: {{ environment }}
+          Max Connections: {{ max_connections }}
+          Features: {{ feature_flags }}
+
+  handlers:
+    - name: restart apache
+      service:
+        name: httpd
+        state: restarted
+
+    - name: reload apache
+      service:
+        name: httpd
+        state: reloaded
