@@ -1,0 +1,4 @@
+---
+app_name: "webapp"
+app_version: "1.0"
+database_host: "{{ groups['database_servers'][0] }}"
