@@ -1,0 +1,45 @@
+---
+- name: Modify User Shells
+  hosts: local
+  become: yes
+  tasks:
+    - name: Change alice's shell to zsh (if available)
+      user:
+        name: alice
+        shell: /bin/zsh
+      ignore_errors: yes
+
+    - name: Fallback - Change alice's shell to bash if zsh not available
+      user:
+        name: alice
+        shell: /bin/bash
+      when: ansible_failed_result is defined
+
+    - name: Change eve's shell to restricted shell
+      user:
+        name: eve
+        shell: /bin/sh
+
+    - name: Change bob's shell to bash (confirm it's bash)
+      user:
+        name: bob
+        shell: /bin/bash
+
+    - name: Install zsh if not present
+      package:
+        name: zsh
+        state: present
+      ignore_errors: yes
+
+    - name: Change alice's shell to zsh after installation
+      user:
+        name: alice
+        shell: /bin/zsh
+
+    - name: Display current shell information for all users
+      shell: getent passwd | grep -E "(alice|bob|carol|david|eve)" | cut -d: -f1,7
+      register: shell_info
+
+    - name: Show shell information
+      debug:
+        msg: "User shells: {{ shell_info.stdout_lines }}"
