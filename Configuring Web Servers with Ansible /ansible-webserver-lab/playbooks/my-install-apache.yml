@@ -1,0 +1,39 @@
+- name: Create custom Apache configuration
+      copy:
+        content: |
+          ServerRoot /etc/httpd
+          Listen 80
+          Include conf.modules.d/*.conf
+          User apache
+          Group apache
+          ServerAdmin webmaster@localhost
+          DocumentRoot {{ document_root }}
+          
+          <Directory "{{ document_root }}">
+              AllowOverride None
+              Require all granted
+          </Directory>
+          
+          ErrorLog logs/error_log
+          CustomLog logs/access_log combined
+        dest: /etc/httpd/conf/httpd.conf
+        backup: yes
+      notify: restart apache
+      tags: configure
+
+    - name: Set proper permissions on document root
+      file:
+        path: "{{ document_root }}"
+        state: directory
+        owner: apache
+        group: apache
+        mode: '0755'
+      tags: configure
+
+    - name: Configure firewall for HTTP traffic
+      firewalld:
+        service: http
+        permanent: yes
+        state: enabled
+        immediate: yes
+      tags: firewall
