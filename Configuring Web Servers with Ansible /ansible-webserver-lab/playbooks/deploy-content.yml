@@ -1,0 +1,54 @@
+---
+- name: Create document root directory
+  file:
+    path: "{{ document_root }}"
+    state: directory
+    owner: apache
+    group: apache
+    mode: '0755'
+
+- name: Deploy main HTML page
+  template:
+    src: ../templates/index.html.j2
+    dest: "{{ document_root }}/index.html"
+    owner: apache
+    group: apache
+    mode: '0644'
+  notify: reload apache
+
+- name: Deploy CSS file
+  copy:
+    src: ../files/style.css
+    dest: "{{ document_root }}/style.css"
+    owner: apache
+    group: apache
+    mode: '0644'
+
+- name: Deploy about page
+  copy:
+    content: |
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+          <meta charset="UTF-8">
+          <title>About - {{ inventory_hostname }}</title>
+          <link rel="stylesheet" href="style.css">
+      </head>
+      <body>
+          <div class="container">
+              <h1>About {{ inventory_hostname }}</h1>
+              <p>This server was configured using Ansible automation.</p>
+              <div class="info">
+                  <h3>Configuration Details:</h3>
+                  <p><strong>Managed by:</strong> Ansible</p>
+                  <p><strong>Web Server:</strong> Apache HTTP Server</p>
+                  <p><strong>Document Root:</strong> {{ document_root }}</p>
+              </div>
+              <p><a href="index.html" class="button">Back to Home</a></p>
+          </div>
+      </body>
+      </html>
+    dest: "{{ document_root }}/about.html"
+    owner: apache
+    group: apache
+    mode: '0644'
