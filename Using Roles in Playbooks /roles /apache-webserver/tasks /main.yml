@@ -1,0 +1,55 @@
+---
+# Main tasks file for apache-webserver role
+
+- name: Install Apache HTTP Server
+  package:
+    name: "{{ apache_package_name }}"
+    state: present
+  become: yes
+
+- name: Start and enable Apache service
+  service:
+    name: "{{ apache_service_name }}"
+    state: started
+    enabled: yes
+  become: yes
+  notify: restart apache
+
+- name: Create document root directory
+  file:
+    path: "{{ document_root }}"
+    state: directory
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+    mode: '0755'
+  become: yes
+
+- name: Deploy custom index.html from template
+  template:
+    src: index.html.j2
+    dest: "{{ document_root }}/index.html"
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+    mode: '0644'
+  become: yes
+  notify: restart apache
+
+- name: Configure Apache virtual host
+  template:
+    src: vhost.conf.j2
+    dest: "{{ apache_config_dir }}/{{ site_name }}.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify: restart apache
+
+- name: Open firewall for HTTP traffic
+  firewalld:
+    service: http
+    permanent: yes
+    state: enabled
+    immediate: yes
+  become: yes
+  ignore_errors: yes
+EOF
