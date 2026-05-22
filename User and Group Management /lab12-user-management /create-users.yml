@@ -1,0 +1,72 @@
+---
+- name: Create Users with Different Configurations
+  hosts: local
+  become: yes
+  tasks:
+    - name: Create developer user - alice
+      user:
+        name: alice
+        comment: "Alice Johnson - Senior Developer"
+        uid: 2001
+        group: developers
+        groups: developers
+        shell: /bin/bash
+        home: /home/alice
+        create_home: yes
+        state: present
+
+    - name: Create developer user - bob
+      user:
+        name: bob
+        comment: "Bob Smith - Junior Developer"
+        uid: 2002
+        group: developers
+        groups: developers
+        shell: /bin/bash
+        home: /home/bob
+        create_home: yes
+        state: present
+
+    - name: Create tester user - carol
+      user:
+        name: carol
+        comment: "Carol Davis - QA Tester"
+        uid: 2003
+        group: testers
+        groups: testers
+        shell: /bin/bash
+        home: /home/carol
+        create_home: yes
+        state: present
+
+    - name: Create manager user - david
+      user:
+        name: david
+        comment: "David Wilson - Project Manager"
+        uid: 2004
+        group: managers
+        groups: managers,developers,testers
+        shell: /bin/bash
+        home: /home/david
+        create_home: yes
+        state: present
+
+    - name: Create contractor user - eve
+      user:
+        name: eve
+        comment: "Eve Brown - External Contractor"
+        uid: 2005
+        group: contractors
+        groups: contractors
+        shell: /bin/sh
+        home: /home/eve
+        create_home: yes
+        state: present
+
+    - name: Display created users
+      shell: getent passwd | grep -E "(alice|bob|carol|david|eve)"
+      register: user_info
+
+    - name: Show user information
+      debug:
+        msg: "{{ user_info.stdout_lines }}"
