@@ -1,0 +1,76 @@
+---
+- name: Modify User Home Directories
+  hosts: local
+  become: yes
+  tasks:
+    - name: Create custom home directory structure
+      file:
+        path: /opt/users
+        state: directory
+        mode: '0755'
+
+    - name: Create new home directory for eve (contractor to employee)
+      file:
+        path: /opt/users/eve
+        state: directory
+        owner: eve
+        group: developers
+        mode: '0750'
+
+    - name: Copy eve's existing home content to new location
+      shell: |
+        if [ -d /home/eve ]; then
+          cp -r /home/eve/* /opt/users/eve/ 2>/dev/null || true
+          cp -r /home/eve/.* /opt/users/eve/ 2>/dev/null || true
+        fi
+      ignore_errors: yes
+
+    - name: Update eve's home directory
+      user:
+        name: eve
+        home: /opt/users/eve
+        move_home: yes
+
+    - name: Create shared project directory
+      file:
+        path: /home/shared/project-alpha
+        state: directory
+        owner: root
+        group: project-alpha
+        mode: '0770'
+
+    - name: Create symbolic link in bob's home to shared project
+      file:
+        src: /home/shared/project-alpha
+        dest: /home/bob/project-alpha
+        state: link
+        owner: bob
+        group: developers
+
+    - name: Set proper permissions on alice's home directory
+      file:
+        path: /home/alice
+        state: directory
+        owner: alice
+        group: developers
+        mode: '0750'
+
+    - name: Create development workspace in alice's home
+      file:
+        path: /home/alice/workspace
+        state: directory
+        owner: alice
+        group: developers
+        mode: '0755'
+
+    - name: Display home directory information
+      shell: |
+        for user in alice bob carol david eve; do
+          echo "User $user home: $(getent passwd $user | cut -d: -f6)"
+          ls -ld $(getent passwd $user | cut -d: -f6) 2>/dev/null || echo "Directory not found"
+        done
+      register: home_info
+
+    - name: Show home directory information
+      debug:
+        msg: "{{ home_info.stdout_lines }}"
