@@ -1,0 +1,34 @@
+---
+- name: Validate Apache Web Server Deployment
+  hosts: web_servers
+  
+  tasks:
+    - name: Check if Apache is running
+      service_facts:
+      
+    - name: Verify Apache service status
+      assert:
+        that:
+          - ansible_facts.services['httpd.service'].state == 'running'
+        fail_msg: "Apache service is not running"
+        success_msg: "Apache service is running successfully"
+    
+    - name: Test HTTP response
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}"
+        method: GET
+        status_code: 200
+      delegate_to: localhost
+      
+    - name: Check if custom index.html exists
+      stat:
+        path: /var/www/html/index.html
+      register: index_file
+      
+    - name: Verify index.html was created
+      assert:
+        that:
+          - index_file.stat.exists
+        fail_msg: "Custom index.html file not found"
+        success_msg: "Custom index.html file exists"
+EOF
