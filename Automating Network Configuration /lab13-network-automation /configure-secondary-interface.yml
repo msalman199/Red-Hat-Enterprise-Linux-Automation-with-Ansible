@@ -1,0 +1,24 @@
+---
+- name: Configure Secondary Network Interface
+  hosts: all
+  become: yes
+  
+  tasks:
+    - name: Create secondary network connection
+      community.general.nmcli:
+        conn_name: "secondary-net"
+        ifname: "{{ ansible_default_ipv4.interface }}"
+        type: ethernet
+        ip4: "10.0.0.{{ ansible_play_hosts.index(inventory_hostname) + 10 }}/24"
+        state: present
+      
+    - name: Verify secondary connection exists
+      community.general.nmcli:
+        conn_name: "secondary-net"
+        state: present
+      register: secondary_result
+      
+    - name: Display connection status
+      debug:
+        msg: "Secondary network connection configured: {{ secondary_result.changed }}"
+EOF
