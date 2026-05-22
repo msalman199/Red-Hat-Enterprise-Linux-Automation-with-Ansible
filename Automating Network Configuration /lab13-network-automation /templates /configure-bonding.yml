@@ -1,0 +1,27 @@
+---
+- name: Configure Network Bonding
+  hosts: all
+  become: yes
+  
+  tasks:
+    - name: Create bond interface
+      community.general.nmcli:
+        conn_name: "bond0"
+        type: bond
+        mode: "active-backup"
+        ip4: "192.168.2.{{ 10 + ansible_play_hosts.index(inventory_hostname) }}/24"
+        state: present
+        
+    - name: Add slave interfaces to bond
+      community.general.nmcli:
+        conn_name: "bond0-slave-{{ item }}"
+        type: ethernet
+        ifname: "{{ item }}"
+        master: "bond0"
+        slave_type: bond
+        state: present
+      loop:
+        - "eth1"
+        - "eth2"
+      ignore_errors: yes
+EOF
