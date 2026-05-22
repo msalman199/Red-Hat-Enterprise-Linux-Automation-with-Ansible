@@ -1,0 +1,19 @@
+- name: Deploy Apache Web Server with Custom Configuration
+  hosts: web_servers
+  become: yes
+  
+  vars:
+    # Override default role variables
+    welcome_message: "Welcome to Al Nafi Production Web Server!"
+    company_name: "Al Nafi Technology Solutions"
+    server_admin: "webmaster@alnafi.com"
+    site_name: "production-site"
+    
+  roles:
+    - role: apache-webserver
+      vars:
+        # Role-specific variable overrides
+        apache_port: 80
+        max_connections: 200
+        timeout: 600
+EOF
