@@ -1,0 +1,50 @@
+---
+- name: Configure Advanced Routing
+  hosts: all
+  become: yes
+  vars:
+    custom_routes:
+      - destination: "172.16.0.0/16"
+        gateway: "192.168.1.1"
+        metric: 100
+      - destination: "10.10.0.0/16"
+        gateway: "192.168.1.1"
+        metric: 200
+  
+  tasks:
+    - name: Add custom static routes
+      community.general.nmcli:
+        conn_name: "{{ ansible_default_ipv4.interface }}"
+        type: ethernet
+        routes4: "{{ custom_routes | map(attribute='destination') | list }}"
+        route_metric4: "{{ custom_routes[0].metric }}"
+        state: present
+      notify: reload_connection
+      
+    - name: Configure routing table entries
+      lineinfile:
+        path: /etc/sysconfig/network-scripts/route-{{ ansible_default_ipv4.interface }}
+        line: "{{ item.destination }} via {{ item.gateway }} metric {{ item.metric }}"
+        create: yes
+      loop: "{{ custom_routes }}"
+      notify: reload_connection
+      
+    - name: Display current routing table
+      shell: "ip route show"
+      register: routing_table
+      
+    - name: Show routing configuration
+      debug:
+        var: routing_table.stdout_lines
+
+  handlers:
+    - name: reload_connection
+      community.general.nmcli:
+        conn_name: "{{ ansible_default_ipv4.interface }}"
+        state: down
+      
+    - name: bring_up_connection
+      community.general.nmcli:
+        conn_name: "{{ ansible_default_ipv4.interface }}"
+        state: up
+EOF
