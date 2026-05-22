@@ -1,0 +1,106 @@
+---
+- name: Implement Comprehensive Security Policy
+  hosts: all
+  become: yes
+  vars:
+    web_servers: ['node1']
+    db_servers: ['node2']
+
+  tasks:
+    - name: Configure web servers with public zone
+      block:
+        - name: Set public zone as default for web servers
+          firewalld:
+            zone: public
+            permanent: yes
+            state: enabled
+            immediate: yes
+
+        - name: Allow web services for web servers
+          firewalld:
+            zone: public
+            service: "{{ item }}"
+            permanent: yes
+            state: enabled
+            immediate: yes
+          loop:
+            - http
+            - https
+            - ssh
+
+        - name: Allow custom web ports
+          firewalld:
+            zone: public
+            port: "{{ item }}"
+            permanent: yes
+            state: enabled
+            immediate: yes
+          loop:
+            - 8080/tcp
+            - 8443/tcp
+
+      when: inventory_hostname in web_servers
+
+    - name: Configure database servers with internal zone
+      block:
+        - name: Create internal zone for database servers
+          firewalld:
+            zone: internal
+            permanent: yes
+            state: present
+
+        - name: Allow SSH for management
+          firewalld:
+            zone: internal
+            service: ssh
+            permanent: yes
+            state: enabled
+            immediate: yes
+
+        - name: Allow database ports only from web servers
+          firewalld:
+            zone: internal
+            rich_rule: 'rule family="ipv4" source address="192.168.1.10" port port="3306" protocol="tcp" accept'
+            permanent: yes
+            state: enabled
+            immediate: yes
+
+        - name: Block all other database access
+          firewalld:
+            zone: internal
+            rich_rule: 'rule port port="3306" protocol="tcp" drop'
+            permanent: yes
+            state: enabled
+            immediate: yes
+
+      when: inventory_hostname in db_servers
+
+    - name: Apply common security rules to all servers
+      block:
+        - name: Block common attack ports
+          firewalld:
+            port: "{{ item }}"
+            permanent: yes
+            state: disabled
+            immediate: yes
+          loop:
+            - 23/tcp    # Telnet
+            - 135/tcp   # RPC
+            - 139/tcp   # NetBIOS
+            - 445/tcp   # SMB
+
+        - name: Enable logging for dropped packets
+          firewalld:
+            rich_rule: 'rule drop log prefix="FIREWALL-DROP" level="info"'
+            permanent: yes
+            state: enabled
+            immediate: yes
+
+    - name: Verify final configuration
+      command: firewall-cmd --list-all
+      register: final_config
+
+    - name: Display final firewall configuration
+      debug:
+        msg: "{{ final_config.stdout_lines }}"
+EOF
