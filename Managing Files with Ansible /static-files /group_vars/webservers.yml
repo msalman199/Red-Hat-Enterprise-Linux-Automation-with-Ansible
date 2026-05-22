@@ -1,0 +1,30 @@
+---
+# Apache Configuration Variables
+http_port: 80
+log_dir: /var/log/httpd
+enable_security_headers: true
+directory_options: "Indexes FollowSymLinks"
+allow_override: "All"
+
+# SSL Configuration
+ssl_enabled: false
+ssl_cert_path: /etc/ssl/certs/server.crt
+ssl_key_path: /etc/ssl/private/server.key
+
+# Application Configuration
+environment: production
+app_port: 8080
+max_connections: 150
+
+# Feature Flags
+feature_flags:
+  caching: true
+  compression: true
+  monitoring: true
+  debug_mode: false
+
+# Custom Variables
+custom_vars:
+  app_version: "2.1.0"
+  maintenance_window: "02:00-04:00"
+  backup_retention: "30"
