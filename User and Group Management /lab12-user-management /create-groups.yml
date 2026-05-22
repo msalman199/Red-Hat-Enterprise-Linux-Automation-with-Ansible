@@ -1,0 +1,36 @@
+---
+- name: Create Groups for User Management
+  hosts: local
+  become: yes
+  tasks:
+    - name: Create developers group
+      group:
+        name: developers
+        state: present
+        gid: 3001
+
+    - name: Create testers group
+      group:
+        name: testers
+        state: present
+        gid: 3002
+
+    - name: Create managers group
+      group:
+        name: managers
+        state: present
+        gid: 3003
+
+    - name: Create contractors group
+      group:
+        name: contractors
+        state: present
+        gid: 3004
+
+    - name: Display created groups
+      shell: getent group | grep -E "(developers|testers|managers|contractors)"
+      register: group_info
+
+    - name: Show group information
+      debug:
+        msg: "{{ group_info.stdout_lines }}"
