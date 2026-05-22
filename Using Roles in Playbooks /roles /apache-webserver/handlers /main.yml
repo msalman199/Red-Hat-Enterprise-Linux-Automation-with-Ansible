@@ -1,0 +1,28 @@
+---
+# Handlers for apache-webserver role
+
+- name: restart apache
+  service:
+    name: "{{ apache_service_name }}"
+    state: restarted
+  become: yes
+
+- name: reload apache
+  service:
+    name: "{{ apache_service_name }}"
+    state: reloaded
+  become: yes
+
+- name: start apache
+  service:
+    name: "{{ apache_service_name }}"
+    state: started
+  become: yes
+
+- name: stop apache
+  service:
+    name: "{{ apache_service_name }}"
+    state: stopped
+  become: yes
+EOF
+Task 
