@@ -1,0 +1,61 @@
+---
+- name: Copy Static Files to Web Servers
+  hosts: webservers
+  become: yes
+  vars:
+    apache_config_dir: /etc/httpd/conf.d
+    backup_dir: /backup/configs
+  
+  tasks:
+    - name: Ensure backup directory exists
+      file:
+        path: "{{ backup_dir }}"
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Copy Apache security configuration
+      copy:
+        src: static-files/apache-security.conf
+        dest: "{{ apache_config_dir }}/security.conf"
+        owner: root
+        group: root
+        mode: '0644'
+        backup: yes
+        validate: 'httpd -t -f %s'
+      notify: restart apache
+
+    - name: Copy custom index.html file
+      copy:
+        content: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>Welcome to {{ inventory_hostname }}</title>
+          </head>
+          <body>
+              <h1>Static Content Deployed Successfully!</h1>
+              <p>This server is: {{ inventory_hostname }}</p>
+              <p>Deployed on: {{ ansible_date_time.date }}</p>
+          </body>
+          </html>
+        dest: /var/www/html/index.html
+        owner: apache
+        group: apache
+        mode: '0644'
+
+    - name: Copy binary file (favicon)
+      copy:
+        src: static-files/favicon.ico
+        dest: /var/www/html/favicon.ico
+        owner: apache
+        group: apache
+        mode: '0644'
+      ignore_errors: yes
+
+  handlers:
+    - name: restart apache
+      service:
+        name: httpd
+        state: restarted
