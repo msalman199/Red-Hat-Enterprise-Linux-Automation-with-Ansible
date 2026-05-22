@@ -37,3 +37,40 @@
         state: enabled
         immediate: yes
       tags: firewall
+  handlers:
+    - name: restart apache
+      systemd:
+        name: "{{ apache_service }}"
+        state: restarted
+        enabled: yes
+
+    - name: reload apache
+      systemd:
+        name: "{{ apache_service }}"
+        state: reloaded
+   - name: Start and enable Apache service
+      systemd:
+        name: "{{ apache_service }}"
+        state: started
+        enabled: yes
+      tags: service
+
+    - name: Verify Apache is running
+      systemd:
+        name: "{{ apache_service }}"
+        state: started
+      register: apache_status
+      tags: verify
+
+    - name: Display Apache service status
+      debug:
+        msg: "Apache service is {{ apache_status.status.ActiveState }}"
+      tags: verify
+
+    - name: Check if Apache is listening on port 80
+      wait_for:
+        port: 80
+        host: "{{ ansible_default_ipv4.address }}"
+        timeout: 30
+      tags: verify
+        
