@@ -1,0 +1,64 @@
+---
+- name: Manage Firewall Zones
+  hosts: all
+  become: yes
+  tasks:
+    - name: List all available zones
+      command: firewall-cmd --get-zones
+      register: available_zones
+
+    - name: Display available zones
+      debug:
+        msg: "Available zones: {{ available_zones.stdout }}"
+
+    - name: Get default zone
+      command: firewall-cmd --get-default-zone
+      register: default_zone
+
+    - name: Display default zone
+      debug:
+        msg: "Default zone: {{ default_zone.stdout }}"
+
+    - name: Create custom zone for DMZ servers
+      firewalld:
+        zone: dmz-custom
+        permanent: yes
+        state: present
+
+    - name: Configure DMZ zone with specific services
+      firewalld:
+        zone: dmz-custom
+        service: "{{ item }}"
+        permanent: yes
+        state: enabled
+        immediate: yes
+      loop:
+        - http
+        - https
+        - ssh
+
+    - name: Add interface to specific zone (example)
+      firewalld:
+        zone: public
+        interface: eth0
+        permanent: yes
+        state: enabled
+        immediate: yes
+      ignore_errors: yes
+
+    - name: Set trusted zone for internal network
+      firewalld:
+        zone: trusted
+        source: 192.168.1.0/24
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: List zones and their configurations
+      command: firewall-cmd --list-all-zones
+      register: all_zones
+
+    - name: Display zones configuration (first 50 lines)
+      debug:
+        msg: "{{ all_zones.stdout_lines[:50] }}"
+EOF
