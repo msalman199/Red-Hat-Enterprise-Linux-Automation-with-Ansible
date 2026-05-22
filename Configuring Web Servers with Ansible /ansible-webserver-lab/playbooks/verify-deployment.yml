@@ -1,0 +1,49 @@
+---
+- name: Verify Web Server Deployment
+  hosts: webservers
+  become: yes
+  
+  tasks:
+    - name: Check Apache service status
+      systemd:
+        name: httpd
+      register: apache_service_status
+      
+    - name: Verify Apache is listening on port 80
+      wait_for:
+        port: 80
+        host: "{{ ansible_default_ipv4.address }}"
+        timeout: 10
+      register: port_check
+      
+    - name: Test HTTP response
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}"
+        method: GET
+        status_code: 200
+      register: http_response
+      
+    - name: Test about page
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}/about.html"
+        method: GET
+        status_code: 200
+      register: about_response
+      
+    - name: Check CSS file accessibility
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}/style.css"
+        method: GET
+        status_code: 200
+      register: css_response
+      
+    - name: Display verification results
+      debug:
+        msg: |
+          Verification Results for {{ inventory_hostname }}:
+          - Apache Service: {{ apache_service_status.status.ActiveState }}
+          - Port 80 Status: {{ 'Open' if port_check.elapsed is defined else 'Closed' }}
+          - Main Page: {{ 'OK' if http_response.status == 200 else 'Failed' }}
+          - About Page: {{ 'OK' if about_response.status == 200 else 'Failed' }}
+          - CSS File: {{ 'OK' if css_response.status == 200 else 'Failed' }}
+          - Server URL: http://{{ ansible_default_ipv4.address }}
