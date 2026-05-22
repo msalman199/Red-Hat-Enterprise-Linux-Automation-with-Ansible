@@ -1,0 +1,55 @@
+---
+- name: Configure Database Servers
+  hosts: database_servers
+  become: yes
+  roles:
+    - mysql
+  tags:
+    - database
+    - mysql
+
+- name: Configure Web Servers
+  hosts: web_servers
+  become: yes
+  roles:
+    - apache
+  tags:
+    - webserver
+    - apache
+
+- name: Deploy Web Application
+  hosts: web_servers
+  become: yes
+  roles:
+    - webapp
+  tags:
+    - application
+    - webapp
+
+- name: Verify Deployment
+  hosts: web_servers
+  become: yes
+  tasks:
+    - name: Check Apache service status
+      systemd:
+        name: httpd
+      register: apache_status
+    
+    - name: Display Apache status
+      debug:
+        msg: "Apache is {{ apache_status.status.ActiveState }}"
+    
+    - name: Test web application
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}/{{ app_name }}"
+        method: GET
+        status_code: 200
+      register: web_test
+      ignore_errors: yes
+    
+    - name: Display web test results
+      debug:
+        msg: "Web application test: {{ 'PASSED' if web_test.status == 200 else 'FAILED' }}"
+  tags:
+    - verification
+    - testing
