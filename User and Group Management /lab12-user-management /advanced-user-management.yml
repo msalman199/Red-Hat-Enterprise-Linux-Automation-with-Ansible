@@ -1,0 +1,79 @@
+---
+- name: Advanced User Management Operations
+  hosts: local
+  become: yes
+  vars:
+    users_to_create:
+      - name: frank
+        comment: "Frank Miller - DevOps Engineer"
+        uid: 2006
+        primary_group: developers
+        secondary_groups: ["sysadmins", "project-alpha"]
+        shell: /bin/bash
+        home_dir: /home/frank
+      - name: grace
+        comment: "Grace Lee - Security Analyst"
+        uid: 2007
+        primary_group: testers
+        secondary_groups: ["sysadmins"]
+        shell: /bin/bash
+        home_dir: /home/grace
+
+  tasks:
+    - name: Create users from variable list
+      user:
+        name: "{{ item.name }}"
+        comment: "{{ item.comment }}"
+        uid: "{{ item.uid }}"
+        group: "{{ item.primary_group }}"
+        groups: "{{ item.secondary_groups | join(',') }}"
+        shell: "{{ item.shell }}"
+        home: "{{ item.home_dir }}"
+        create_home: yes
+        state: present
+      loop: "{{ users_to_create }}"
+
+    - name: Set password expiration for contractor accounts
+      shell: chage -M 90 eve
+      ignore_errors: yes
+
+    - name: Lock temporarily unused accounts
+      user:
+        name: carol
+        password_lock: yes
+
+    - name: Create user-specific directories
+      file:
+        path: "/home/{{ item.name }}/{{ folder }}"
+        state: directory
+        owner: "{{ item.name }}"
+        group: "{{ item.primary_group }}"
+        mode: '0755'
+      loop: "{{ users_to_create }}"
+      loop_control:
+        loop_var: item
+      with_items:
+        - Documents
+        - Downloads
+        - Projects
+      vars:
+        folder: "{{ item }}"
+
+    - name: Generate user report
+      shell: |
+        echo "=== USER MANAGEMENT REPORT ===" > /tmp/user_report.txt
+        echo "Date: $(date)" >> /tmp/user_report.txt
+        echo "" >> /tmp/user_report.txt
+        echo "Created Users:" >> /tmp/user_report.txt
+        getent passwd | grep -E "(alice|bob|carol|david|eve|frank|grace)" >> /tmp/user_report.txt
+        echo "" >> /tmp/user_report.txt
+        echo "Created Groups:" >> /tmp/user_report.txt
+        getent group | grep -E "(developers|testers|managers|contractors|project-alpha|sysadmins)" >> /tmp/user_report.txt
+
+    - name: Display user report
+      shell: cat /tmp/user_report.txt
+      register: user_report
+
+    - name: Show final user report
+      debug:
+        msg: "{{ user_report.stdout_lines }}"
