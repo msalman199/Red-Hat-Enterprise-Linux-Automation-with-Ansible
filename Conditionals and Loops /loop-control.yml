@@ -1,0 +1,54 @@
+---
+- name: Loop Control Demo
+  hosts: all
+  gather_facts: yes
+  vars:
+    packages_to_install:
+      - name: "git"
+        required: true
+      - name: "docker"
+        required: false
+      - name: "nodejs"
+        required: true
+      - name: "python3-pip"
+        required: true
+      - name: "mongodb"
+        required: false
+        
+  tasks:
+    - name: Install only required packages
+      yum:
+        name: "{{ item.name }}"
+        state: present
+      loop: "{{ packages_to_install }}"
+      when: item.required == true
+      
+    - name: Create numbered backup directories
+      file:
+        path: "/backup/backup-{{ ansible_loop.index }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - daily
+        - weekly
+        - monthly
+      loop_control:
+        index_var: ansible_loop.index
+        
+    - name: Process items with custom loop variable name
+      debug:
+        msg: "Processing {{ current_item.name }} (Required: {{ current_item.required }})"
+      loop: "{{ packages_to_install }}"
+      loop_control:
+        loop_var: current_item
+        
+    - name: Install packages with pause between installations
+      yum:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - curl
+        - wget
+        - rsync
+      loop_control:
+        pause: 2
