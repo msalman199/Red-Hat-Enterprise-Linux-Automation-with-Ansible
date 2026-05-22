@@ -1,0 +1,121 @@
+---
+- name: Configure Database Servers
+  hosts: database_servers
+  become: yes
+  vars:
+    mysql_root_password: "SecurePass123!"
+    mysql_database: "webapp_db"
+    mysql_user: "webapp_user"
+    mysql_password: "WebApp123!"
+  
+  tasks:
+    - name: Install MySQL server
+      yum:
+        name: 
+          - mysql-server
+          - python3-PyMySQL
+        state: present
+    
+    - name: Start and enable MySQL service
+      systemd:
+        name: mysqld
+        state: started
+        enabled: yes
+    
+    - name: Set MySQL root password
+      mysql_user:
+        name: root
+        password: "{{ mysql_root_password }}"
+        login_unix_socket: /var/lib/mysql/mysql.sock
+        state: present
+    
+    - name: Create application database
+      mysql_db:
+        name: "{{ mysql_database }}"
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        state: present
+    
+    - name: Create application user
+      mysql_user:
+        name: "{{ mysql_user }}"
+        password: "{{ mysql_password }}"
+        priv: "{{ mysql_database }}.*:ALL"
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        state: present
+
+- name: Configure Web Servers
+  hosts: web_servers
+  become: yes
+  vars:
+    web_user: "webadmin"
+    document_root: "/var/www/html"
+    
+  tasks:
+    - name: Install Apache web server
+      yum:
+        name:
+          - httpd
+          - php
+          - php-mysql
+        state: present
+    
+    - name: Create web user
+      user:
+        name: "{{ web_user }}"
+        system: yes
+        shell: /bin/bash
+        home: /home/{{ web_user }}
+        create_home: yes
+    
+    - name: Start and enable Apache service
+      systemd:
+        name: httpd
+        state: started
+        enabled: yes
+    
+    - name: Configure firewall for HTTP
+      firewalld:
+        service: http
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+- name: Deploy Application
+  hosts: web_servers
+  become: yes
+  vars:
+    app_name: "webapp"
+    
+  tasks:
+    - name: Create application directory
+      file:
+        path: "{{ document_root }}/{{ app_name }}"
+        state: directory
+        owner: apache
+        group: apache
+        mode: '0755'
+    
+    - name: Deploy sample PHP application
+      copy:
+        content: |
+          <?php
+          $servername = "{{ groups['database_servers'][0] }}";
+          $username = "{{ mysql_user }}";
+          $password = "{{ mysql_password }}";
+          $dbname = "{{ mysql_database }}";
+          
+          try {
+              $pdo = new PDO("mysql:host=$servername;dbname=$dbname", $username, $password);
+              $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+              echo "<h1>Database Connection Successful!</h1>";
+              echo "<p>Connected to database: $dbname</p>";
+          } catch(PDOException $e) {
+              echo "<h1>Connection failed: " . $e->getMessage() . "</h1>";
+          }
+          ?>
+        dest: "{{ document_root }}/{{ app_name }}/index.php"
+        owner: apache
+        group: apache
+        mode: '0644'
