@@ -1,0 +1,35 @@
+---
+- name: "Complete Application Stack Deployment"
+  hosts: localhost
+  gather_facts: false
+  vars:
+    deployment_timestamp: "{{ ansible_date_time.epoch }}"
+    deployment_id: "deploy-{{ deployment_timestamp }}"
+  
+  tasks:
+    - name: "Display deployment information"
+      debug:
+        msg: |
+          Starting orchestrated deployment
+          Deployment ID: {{ deployment_id }}
+          Timestamp: {{ ansible_date_time.iso8601 }}
+
+    - name: "Phase 1 - Deploy Database Infrastructure"
+      import_playbook: database.yml
+      tags: ['database', 'infrastructure']
+
+    - name: "Phase 2 - Deploy Web Application Servers"
+      import_playbook: webservers.yml
+      tags: ['webservers', 'application']
+
+    - name: "Phase 3 - Configure Load Balancer"
+      import_playbook: loadbalancer.yml
+      tags: ['loadbalancer', 'networking']
+
+    - name: "Phase 4 - Setup Monitoring"
+      import_playbook: monitoring.yml
+      tags: ['monitoring', 'observability']
+
+    - name: "Phase 5 - Validate Complete Stack"
+      import_playbook: validation.yml
+      tags: ['validation', 'testing']
