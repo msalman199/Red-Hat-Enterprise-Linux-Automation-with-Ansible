@@ -1,0 +1,44 @@
+---
+- name: "Validate System Dependencies"
+  hosts: all
+  gather_facts: yes
+  vars:
+    required_dependencies:
+      - name: "Network Connectivity"
+        check: "ping"
+      - name: "Sufficient Disk Space"
+        check: "disk_space"
+      - name: "Required Ports Available"
+        check: "ports"
+
+  tasks:
+    - name: "Check network connectivity between servers"
+      ping:
+      delegate_to: "{{ item }}"
+      loop: "{{ groups['all'] }}"
+      when: item != inventory_hostname
+
+    - name: "Check available disk space"
+      assert:
+        that:
+          - ansible_mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_available') | first > 1073741824
+        fail_msg: "Insufficient disk space (less than 1GB available)"
+        success_msg: "Sufficient disk space available"
+
+    - name: "Check if required ports are available"
+      wait_for:
+        port: "{{ item }}"
+        host: "{{ ansible_default_ipv4.address }}"
+        state: stopped
+        timeout: 5
+      loop:
+        - 80
+        - 3306
+        - 8080
+      ignore_errors: yes
+      register: port_check
+
+    - name: "Report port availability"
+      debug:
+        msg: "Port {{ item.item }} is {{ 'available' if item.failed else 'in use' }}"
+      loop: "{{ port_check.results }}"
