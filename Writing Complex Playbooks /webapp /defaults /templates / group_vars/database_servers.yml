@@ -1,0 +1,34 @@
+---
+mysql_root_password: "DatabaseRoot123!"
+mysql_database: "production_db"
+mysql_user: "app_user"
+mysql_password: "AppUser123!"
+mysql_bind_address: "0.0.0.0"
+
+# Performance tuning
+mysql_max_connections: 100
+mysql_innodb_buffer_pool_size: "128M"
+nano group_vars/web_servers.yml
+---
+web_user: "webadmin"
+document_root: "/var/www/html"
+app_name: "mywebapp"
+server_name: "{{ inventory_hostname }}.example.com"
+
+# Apache tuning
+apache_max_request_workers: 150
+apache_server_limit: 16
+nano group_vars/all.yml
+---
+# Common variables for all servers
+timezone: "America/New_York"
+ntp_servers:
+  - "0.pool.ntp.org"
+  - "1.pool.ntp.org"
+
+# Security settings
+ssh_port: 22
+firewall_enabled: true
+
+# Monitoring
+log_retention_days: 30
