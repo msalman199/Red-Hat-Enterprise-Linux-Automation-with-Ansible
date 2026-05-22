@@ -1,0 +1,29 @@
+---
+# Common system setup tasks
+
+- name: Update system packages
+  package:
+    name: '*'
+    state: latest
+  become: yes
+
+- name: Install common packages
+  package:
+    name:
+      - wget
+      - curl
+      - vim
+      - htop
+    state: present
+  become: yes
+
+- name: Set timezone
+  timezone:
+    name: "{{ system_timezone }}"
+  become: yes
+EOF
+
+cat > roles/common/defaults/main.yml << 'EOF'
+---
+system_timezone: "America/New_York"
+EOF
