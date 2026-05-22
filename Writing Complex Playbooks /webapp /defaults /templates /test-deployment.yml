@@ -1,0 +1,61 @@
+---
+- name: Test Database Connectivity
+  hosts: database_servers
+  become: yes
+  tasks:
+    - name: Test MySQL service
+      systemd:
+        name: mysqld
+      register: mysql_service
+    
+    - name: Test database connection
+      mysql_db:
+        name: "{{ mysql_database }}"
+        login_user: "{{ mysql_user }}"
+        login_password: "{{ mysql_password }}"
+        state: present
+      register: db_connection
+    
+    - name: Display database test results
+      debug:
+        msg: "Database test: {{ 'PASSED' if db_connection is succeeded else 'FAILED' }}"
+
+- name: Test Web Application
+  hosts: web_servers
+  become: yes
+  tasks:
+    - name: Test Apache service
+      systemd:
+        name: httpd
+      register: apache_service
+    
+    - name: Test web application response
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}/{{ app_name }}"
+        method: GET
+        return_content: yes
+      register: web_response
+    
+    - name: Test database connectivity from web
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}/{{ app_name }}/dbtest.php"
+        method: GET
+        return_content: yes
+      register: db_web_test
+    
+    - name: Display web application test results
+      debug:
+        msg: 
+          - "Web server test: {{ 'PASSED' if web_response.status == 200 else 'FAILED' }}"
+          - "Database connectivity test: {{ 'PASSED' if 'Connected' in db_web_test.content else 'FAILED' }}"
+
+- name: Generate Test Report
+  hosts: localhost
+  tasks:
+    - name: Create test summary
+      debug:
+        msg:
+          - "=== DEPLOYMENT TEST SUMMARY ==="
+          - "Database servers: {{ groups['database_servers'] | length }} configured"
+          - "Web servers: {{ groups['web_servers'] | length }} configured"
+          - "Test completed at: {{ ansible_date_time.iso8601 }}"
