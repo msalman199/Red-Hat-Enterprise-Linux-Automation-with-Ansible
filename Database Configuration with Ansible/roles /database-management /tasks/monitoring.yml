@@ -1,0 +1,14 @@
+---
+- name: Install monitoring tools
+  apt:
+    name:
+      - htop
+      - iotop
+    state: present
+
+- name: Create monitoring script
+  template:
+    src: db-monitor.sh.j2
+    dest: /usr/local/bin/db-monitor.sh
+    mode: '0755'
+EOF
