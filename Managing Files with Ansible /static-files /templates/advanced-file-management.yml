@@ -1,0 +1,103 @@
+---
+- name: Advanced File Management with Ansible
+  hosts: webservers
+  become: yes
+  vars:
+    config_timestamp: "{{ ansible_date_time.epoch }}"
+    
+  tasks:
+    - name: Create directory structure
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      loop:
+        - /opt/app/config
+        - /opt/app/templates
+        - /opt/app/static
+        - /var/log/app
+
+    - name: Copy static configuration files with validation
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: "{{ item.owner | default('root') }}"
+        group: "{{ item.group | default('root') }}"
+        mode: "{{ item.mode | default('0644') }}"
+        backup: yes
+        validate: "{{ item.validate | default(omit) }}"
+      loop:
+        - src: static-files/apache-security.conf
+          dest: /opt/app/config/security.conf
+          validate: 'httpd -t -f %s'
+        - src: static-files/favicon.ico
+          dest: /opt/app/static/favicon.ico
+          owner: apache
+          group: apache
+      notify: backup configurations
+
+    - name: Deploy templates with conditional content
+      template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: "{{ item.owner | default('root') }}"
+        group: "{{ item.group | default('root') }}"
+        mode: "{{ item.mode | default('0644') }}"
+        backup: yes
+      loop:
+        - src: vhost.conf.j2
+          dest: /opt/app/config/{{ server_name }}.conf
+        - src: system-info.conf.j2
+          dest: /opt/app/config/system-info.conf
+        - src: index.html.j2
+          dest: "{{ document_root }}/index.html"
+          owner: apache
+          group: apache
+
+    - name: Create file with dynamic content using copy module
+      copy:
+        content: |
+          # Configuration Summary
+          # Generated: {{ ansible_date_time.iso8601 }}
+          
+          SERVER_NAME={{ server_name }}
+          ENVIRONMENT={{ environment }}
+          TIMESTAMP={{ config_timestamp }}
+          
+          # Ansible Facts
+          HOSTNAME={{ ansible_hostname }}
+          FQDN={{ ansible_fqdn }}
+          IP_ADDRESS={{ ansible_default_ipv4.address }}
+          
+          # System Resources
+          MEMORY_MB={{ ansible_memtotal_mb }}
+          SWAP_MB={{ ansible_swaptotal_mb }}
+          PROCESSOR_COUNT={{ ansible_processor_count }}
+          
+        dest: /opt/app/config/deployment-summary.conf
+        mode: '0644'
+
+    - name: Set file attributes and extended properties
+      file:
+        path: "{{ item.path }}"
+        owner: "{{ item.owner | default('root') }}"
+        group: "{{ item.group | default('root') }}"
+        mode: "{{ item.mode }}"
+        attributes: "{{ item.attributes | default(omit) }}"
+      loop:
+        - path: /opt/app/config
+          mode: '0755'
+          attributes: '+i'  # Make directory immutable
+        - path: /opt/app/static
+          owner: apache
+          group: apache
+          mode: '0755'
+
+  handlers:
+    - name: backup configurations
+      archive:
+        path: /opt/app/config
+        dest: "/backup/config-backup-{{ config_timestamp }}.tar.gz"
+        format: gz
