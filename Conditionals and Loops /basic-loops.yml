@@ -1,0 +1,47 @@
+---
+- name: Basic Loops Demo
+  hosts: all
+  gather_facts: yes
+  
+  tasks:
+    - name: Install multiple packages using loop
+      yum:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - wget
+        - unzip
+        - tree
+        - nano
+        - screen
+        
+    - name: Create multiple users
+      user:
+        name: "{{ item }}"
+        state: present
+        shell: /bin/bash
+        create_home: yes
+      loop:
+        - alice
+        - bob
+        - charlie
+        
+    - name: Create multiple directories
+      file:
+        path: "/opt/{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - app1
+        - app2
+        - app3
+        - logs
+        - backups
+        
+    - name: Display information about each user
+      debug:
+        msg: "Processing user: {{ item }}"
+      loop:
+        - alice
+        - bob
+        - charlie
