@@ -1,0 +1,19 @@
+# Conditional Configuration Template
+# Generated for {{ inventory_hostname }}
+
+{% for condition in test_conditions %}
+# Test: {{ condition.name }}
+{% if condition.condition %}
+{{ condition.name | upper }}_STATUS=PASS
+{{ condition.name | upper }}_MESSAGE="{{ condition.message }}"
+{% else %}
+{{ condition.name | upper }}_STATUS=FAIL
+{{ condition.name | upper }}_MESSAGE="Condition not met"
+{% endif %}
+
+{% endfor %}
+
+# System Summary
+TOTAL_TESTS={{ test_conditions | length }}
+HOSTNAME={{ ansible_hostname }}
+TIMESTAMP={{ ansible_date_time.epoch }}
