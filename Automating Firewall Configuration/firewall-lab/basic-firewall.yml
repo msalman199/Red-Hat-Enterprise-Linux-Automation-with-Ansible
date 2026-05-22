@@ -1,0 +1,45 @@
+---
+- name: Configure Basic Firewall Rules
+  hosts: all
+  become: yes
+  tasks:
+    - name: Ensure firewalld is installed
+      package:
+        name: firewalld
+        state: present
+
+    - name: Start and enable firewalld service
+      systemd:
+        name: firewalld
+        state: started
+        enabled: yes
+
+    - name: Allow SSH service
+      firewalld:
+        service: ssh
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: Allow HTTP service
+      firewalld:
+        service: http
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: Allow HTTPS service
+      firewalld:
+        service: https
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: Display current firewall rules
+      command: firewall-cmd --list-all
+      register: firewall_rules
+
+    - name: Show firewall configuration
+      debug:
+        var: firewall_rules.stdout_lines
+EOF
