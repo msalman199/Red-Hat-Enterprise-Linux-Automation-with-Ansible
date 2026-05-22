@@ -1,0 +1,95 @@
+---
+- name: Configure Database Backups
+  hosts: database_servers
+  become: yes
+  vars:
+    backup_dir: /opt/database-backups
+    backup_retention_days: 7
+
+  tasks:
+    - name: Create backup directory
+      file:
+        path: "{{ backup_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Install backup utilities
+      apt:
+        name:
+          - cron
+          - gzip
+        state: present
+
+- name: Configure MySQL Backups
+  hosts: mysql_servers
+  become: yes
+  vars:
+    backup_dir: /opt/database-backups
+    mysql_root_password: "SecureRootPass123!"
+
+  tasks:
+    - name: Create MySQL backup script
+      copy:
+        content: |
+          #!/bin/bash
+          BACKUP_DIR="{{ backup_dir }}"
+          DATE=$(date +%Y%m%d_%H%M%S)
+          MYSQL_USER="root"
+          MYSQL_PASSWORD="{{ mysql_root_password }}"
+          
+          # Create backup directory if it doesn't exist
+          mkdir -p $BACKUP_DIR
+          
+          # Backup all databases
+          mysqldump -u$MYSQL_USER -p$MYSQL_PASSWORD --all-databases --single-transaction --routines --triggers | gzip > $BACKUP_DIR/mysql_backup_$DATE.sql.gz
+          
+          # Remove backups older than 7 days
+          find $BACKUP_DIR -name "mysql_backup_*.sql.gz" -mtime +7 -delete
+          
+          echo "MySQL backup completed: mysql_backup_$DATE.sql.gz"
+        dest: /usr/local/bin/mysql-backup.sh
+        mode: '0755'
+
+    - name: Schedule MySQL backup cron job
+      cron:
+        name: "MySQL Daily Backup"
+        minute: "0"
+        hour: "2"
+        job: "/usr/local/bin/mysql-backup.sh >> /var/log/mysql-backup.log 2>&1"
+
+- name: Configure PostgreSQL Backups
+  hosts: postgresql_servers
+  become: yes
+  vars:
+    backup_dir: /opt/database-backups
+
+  tasks:
+    - name: Create PostgreSQL backup script
+      copy:
+        content: |
+          #!/bin/bash
+          BACKUP_DIR="{{ backup_dir }}"
+          DATE=$(date +%Y%m%d_%H%M%S)
+          
+          # Create backup directory if it doesn't exist
+          mkdir -p $BACKUP_DIR
+          
+          # Backup all databases
+          sudo -u postgres pg_dumpall | gzip > $BACKUP_DIR/postgresql_backup_$DATE.sql.gz
+          
+          # Remove backups older than 7 days
+          find $BACKUP_DIR -name "postgresql_backup_*.sql.gz" -mtime +7 -delete
+          
+          echo "PostgreSQL backup completed: postgresql_backup_$DATE.sql.gz"
+        dest: /usr/local/bin/postgresql-backup.sh
+        mode: '0755'
+
+    - name: Schedule PostgreSQL backup cron job
+      cron:
+        name: "PostgreSQL Daily Backup"
+        minute: "0"
+        hour: "3"
+        job: "/usr/local/bin/postgresql-backup.sh >> /var/log/postgresql-backup.log 2>&1"
+EOF
