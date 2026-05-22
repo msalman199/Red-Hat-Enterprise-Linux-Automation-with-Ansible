@@ -79,4 +79,5 @@
     
     - name: Display installed packages
       debug:
-        msg: "Installed packages: {{ installed_pa
+        msg: "Installed packages: {{ installed_packages.stdout_lines }}"
+EOF
