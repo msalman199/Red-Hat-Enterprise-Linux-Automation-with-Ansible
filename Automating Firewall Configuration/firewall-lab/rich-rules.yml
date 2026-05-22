@@ -1,0 +1,48 @@
+---
+- name: Configure Firewall Rich Rules
+  hosts: all
+  become: yes
+  tasks:
+    - name: Allow HTTP only from specific network
+      firewalld:
+        rich_rule: 'rule family="ipv4" source address="10.0.0.0/8" service name="http" accept'
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: Block specific IP from accessing SSH
+      firewalld:
+        rich_rule: 'rule family="ipv4" source address="192.168.1.100" service name="ssh" drop'
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: Rate limit SSH connections
+      firewalld:
+        rich_rule: 'rule service name="ssh" accept limit value="3/m"'
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: Allow ICMP ping from internal network only
+      firewalld:
+        rich_rule: 'rule family="ipv4" source address="192.168.0.0/16" icmp-block-inversion="yes" accept'
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: Log dropped packets on port 80
+      firewalld:
+        rich_rule: 'rule port port="80" protocol="tcp" log prefix="HTTP-DROP" level="info" drop'
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: List all rich rules
+      command: firewall-cmd --list-rich-rules
+      register: rich_rules_output
+
+    - name: Display configured rich rules
+      debug:
+        msg: "{{ rich_rules_output.stdout_lines }}"
+EOF
