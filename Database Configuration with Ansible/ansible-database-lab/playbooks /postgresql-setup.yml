@@ -1,0 +1,118 @@
+---
+- name: Install and Configure PostgreSQL Server
+  hosts: postgresql_servers
+  become: yes
+  vars:
+    postgresql_version: "12"
+    postgresql_databases:
+      - name: ecommerce_db
+        owner: ecommerce_user
+        encoding: UTF8
+        locale: en_US.UTF-8
+      - name: analytics_db
+        owner: analytics_user
+        encoding: UTF8
+        locale: en_US.UTF-8
+    postgresql_users:
+      - name: ecommerce_user
+        password: "EcommercePass123!"
+        role_attr_flags: CREATEDB,NOSUPERUSER
+      - name: analytics_user
+        password: "AnalyticsPass123!"
+        role_attr_flags: NOCREATEDB,NOSUPERUSER
+      - name: readonly_user
+        password: "ReadOnlyPass123!"
+        role_attr_flags: NOCREATEDB,NOSUPERUSER
+
+  tasks:
+    - name: Update package cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install PostgreSQL and dependencies
+      apt:
+        name:
+          - postgresql
+          - postgresql-contrib
+          - python3-psycopg2
+          - acl
+        state: present
+
+    - name: Start and enable PostgreSQL service
+      systemd:
+        name: postgresql
+        state: started
+        enabled: yes
+
+    - name: Create PostgreSQL users
+      postgresql_user:
+        name: "{{ item.name }}"
+        password: "{{ item.password }}"
+        role_attr_flags: "{{ item.role_attr_flags }}"
+        state: present
+      become_user: postgres
+      loop: "{{ postgresql_users }}"
+
+    - name: Create PostgreSQL databases
+      postgresql_db:
+        name: "{{ item.name }}"
+        owner: "{{ item.owner }}"
+        encoding: "{{ item.encoding }}"
+        lc_collate: "{{ item.locale }}"
+        lc_ctype: "{{ item.locale }}"
+        state: present
+      become_user: postgres
+      loop: "{{ postgresql_databases }}"
+
+    - name: Configure PostgreSQL authentication
+      postgresql_pg_hba:
+        dest: /etc/postgresql/12/main/pg_hba.conf
+        contype: host
+        databases: all
+        method: md5
+        users: all
+        source: 0.0.0.0/0
+        backup: yes
+      notify: restart postgresql
+
+    - name: Configure PostgreSQL for remote connections
+      postgresql_set:
+        name: listen_addresses
+        value: '*'
+      become_user: postgres
+      notify: restart postgresql
+
+    - name: Configure PostgreSQL max connections
+      postgresql_set:
+        name: max_connections
+        value: '200'
+      become_user: postgres
+      notify: restart postgresql
+
+    - name: Grant database privileges to users
+      postgresql_privs:
+        database: "{{ item.db }}"
+        roles: "{{ item.user }}"
+        privs: "{{ item.privs }}"
+        type: database
+        state: present
+      become_user: postgres
+      loop:
+        - { db: "ecommerce_db", user: "ecommerce_user", privs: "ALL" }
+        - { db: "analytics_db", user: "analytics_user", privs: "ALL" }
+        - { db: "ecommerce_db", user: "readonly_user", privs: "CONNECT" }
+        - { db: "analytics_db", user: "readonly_user", privs: "CONNECT" }
+
+    - name: Open PostgreSQL port in firewall
+      ufw:
+        rule: allow
+        port: '5432'
+        proto: tcp
+
+  handlers:
+    - name: restart postgresql
+      systemd:
+        name: postgresql
+        state: restarted
+EOF
