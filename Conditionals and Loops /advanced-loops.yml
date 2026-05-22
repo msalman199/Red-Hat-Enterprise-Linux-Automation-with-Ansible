@@ -1,0 +1,67 @@
+---
+- name: Advanced Loops Demo
+  hosts: all
+  gather_facts: yes
+  vars:
+    web_applications:
+      - name: "webapp1"
+        port: 8080
+        user: "webapp1user"
+        directory: "/opt/webapp1"
+      - name: "webapp2"
+        port: 8081
+        user: "webapp2user"
+        directory: "/opt/webapp2"
+      - name: "webapp3"
+        port: 8082
+        user: "webapp3user"
+        directory: "/opt/webapp3"
+        
+    database_configs:
+      mysql:
+        port: 3306
+        config_file: "/etc/mysql/my.cnf"
+        service: "mysqld"
+      postgresql:
+        port: 5432
+        config_file: "/etc/postgresql/postgresql.conf"
+        service: "postgresql"
+        
+  tasks:
+    - name: Create users for web applications
+      user:
+        name: "{{ item.user }}"
+        state: present
+        shell: /bin/bash
+        create_home: yes
+      loop: "{{ web_applications }}"
+      
+    - name: Create directories for web applications
+      file:
+        path: "{{ item.directory }}"
+        state: directory
+        owner: "{{ item.user }}"
+        group: "{{ item.user }}"
+        mode: '0755'
+      loop: "{{ web_applications }}"
+      
+    - name: Display web application configurations
+      debug:
+        msg: "App: {{ item.name }}, Port: {{ item.port }}, User: {{ item.user }}"
+      loop: "{{ web_applications }}"
+      
+    - name: Process database configurations
+      debug:
+        msg: "Database: {{ item.key }}, Port: {{ item.value.port }}, Service: {{ item.value.service }}"
+      loop: "{{ database_configs | dict2items }}"
+      
+    - name: Install packages with version control
+      yum:
+        name: "{{ item.name }}"
+        state: "{{ item.state | default('present') }}"
+      loop:
+        - { name: "httpd", state: "present" }
+        - { name: "php", state: "present" }
+        - { name: "php-mysql", state: "present" }
+        - { name: "mariadb-server", state: "present" }
+      when: ansible_os_family == "RedHat"
