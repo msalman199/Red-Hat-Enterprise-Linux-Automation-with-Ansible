@@ -1,0 +1,14 @@
+---
+# Global deployment settings
+deployment_environment: "production"
+app_name: "webapp"
+db_name: "webapp_db"
+db_user: "webapp_user"
+
+# Security settings
+vault_db_password: "SecurePassword123!"
+
+# Network settings
+http_port: 80
+app_port: 8080
+mysql_port: 3306
