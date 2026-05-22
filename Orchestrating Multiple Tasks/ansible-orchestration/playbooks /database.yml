@@ -1,0 +1,67 @@
+---
+- name: "Deploy Database Server"
+  hosts: database_servers
+  become: yes
+  vars:
+    db_name: "webapp_db"
+    db_user: "webapp_user"
+    db_password: "{{ vault_db_password | default('defaultpass123') }}"
+    
+  pre_tasks:
+    - name: "Check if database server is reachable"
+      ping:
+      register: db_ping_result
+      
+    - name: "Fail if database server unreachable"
+      fail:
+        msg: "Database server is not reachable"
+      when: db_ping_result is failed
+
+  tasks:
+    - name: "Install MySQL/MariaDB packages"
+      yum:
+        name:
+          - mariadb-server
+          - mariadb
+          - python3-PyMySQL
+        state: present
+
+    - name: "Start and enable MariaDB service"
+      systemd:
+        name: mariadb
+        state: started
+        enabled: yes
+
+    - name: "Create application database"
+      mysql_db:
+        name: "{{ db_name }}"
+        state: present
+        login_unix_socket: /var/lib/mysql/mysql.sock
+
+    - name: "Create database user"
+      mysql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_password }}"
+        priv: "{{ db_name }}.*:ALL"
+        host: "%"
+        state: present
+        login_unix_socket: /var/lib/mysql/mysql.sock
+
+    - name: "Configure firewall for MySQL"
+      firewalld:
+        service: mysql
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+  post_tasks:
+    - name: "Verify database service is running"
+      systemd:
+        name: mariadb
+      register: db_service_status
+      
+    - name: "Set database deployment fact"
+      set_fact:
+        database_deployed: true
+        database_host: "{{ ansible_default_ipv4.address }}"
+      when: db_service_status.status.ActiveState == "active"
