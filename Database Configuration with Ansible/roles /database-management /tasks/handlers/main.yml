@@ -1,0 +1,7 @@
+---
+- name: restart mysql
+  systemd:
+    name: mysql
+    state: restarted
+
+- name: restart postgresql
