@@ -1,0 +1,38 @@
+---
+- name: Configure Static IP Addresses
+  hosts: all
+  become: yes
+  vars:
+    network_configs:
+      node1:
+        ip: "192.168.1.100"
+        gateway: "192.168.1.1"
+        dns: "8.8.8.8"
+      node2:
+        ip: "192.168.1.101"
+        gateway: "192.168.1.1"
+        dns: "8.8.8.8"
+  
+  tasks:
+    - name: Configure static IP for ethernet interface
+      community.general.nmcli:
+        conn_name: "{{ ansible_default_ipv4.interface }}"
+        ifname: "{{ ansible_default_ipv4.interface }}"
+        type: ethernet
+        ip4: "{{ network_configs[inventory_hostname].ip }}/24"
+        gw4: "{{ network_configs[inventory_hostname].gateway }}"
+        dns4: "{{ network_configs[inventory_hostname].dns }}"
+        state: present
+      notify: restart_network
+
+    - name: Bring up the connection
+      community.general.nmcli:
+        conn_name: "{{ ansible_default_ipv4.interface }}"
+        state: up
+
+  handlers:
+    - name: restart_network
+      service:
+        name: NetworkManager
+        state: restarted
+EOF
