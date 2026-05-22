@@ -1,0 +1,102 @@
+---
+- name: Package Management Reporting
+  hosts: all_servers
+  become: yes
+  gather_facts: yes
+  vars:
+    report_dir: /tmp/ansible_reports
+  
+  tasks:
+    - name: Create report directory
+      file:
+        path: "{{ report_dir }}"
+        state: directory
+        mode: '0755'
+      delegate_to: localhost
+      run_once: true
+    
+    - name: Get installed package count (Red Hat)
+      shell: rpm -qa | wc -l
+      register: rhel_package_count
+      when: ansible_os_family == "RedHat"
+    
+    - name: Get installed package count (Debian)
+      shell: dpkg -l | grep ^ii | wc -l
+      register: debian_package_count
+      when: ansible_os_family == "Debian"
+    
+    - name: Get system uptime
+      command: uptime -p
+      register: system_uptime
+      changed_when: false
+    
+    - name: Get available updates (Red Hat)
+      shell: yum check-update | grep -v "^$" | wc -l
+      register: rhel_updates
+      when: ansible_os_family == "RedHat"
+      failed_when: false
+    
+    - name: Get available updates (Debian)
+      shell: apt list --upgradable 2>/dev/null | grep -v "^Listing" | wc -l
+      register: debian_updates
+      when: ansible_os_family == "Debian"
+      failed_when: false
+    
+    - name: Generate individual host report
+      template:
+        content: |
+          System Package Report: {{ inventory_hostname }}
+          =============================================
+          Generated: {{ ansible_date_time.iso8601 }}
+          
+          System Information:
+          - Hostname: {{ inventory_hostname }}
+          - OS Family: {{ ansible_os_family }}
+          - Distribution: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          - Architecture: {{ ansible_architecture }}
+          - Uptime: {{ system_uptime.stdout }}
+          
+          Package Statistics:
+          {% if ansible_os_family == "RedHat" %}
+          - Total Packages Installed: {{ rhel_package_count.stdout }}
+          - Available Updates: {{ rhel_updates.stdout | default('Unknown') }}
+          {% elif ansible_os_family == "Debian" %}
+          - Total Packages Installed: {{ debian_package_count.stdout }}
+          - Available Updates: {{ debian_updates.stdout | default('Unknown') }}
+          {% endif %}
+          
+          Key Services Status:
+          - SSH Service: {{ ansible_service_mgr }}
+          
+          Memory Usage:
+          - Total Memory: {{ ansible_memtotal_mb }} MB
+          - Free Memory: {{ ansible_memfree_mb }} MB
+          
+          Disk Usage:
+          - Root Filesystem: {{ ansible_mounts[0].size_total | filesizeformat }}
+          - Root Available: {{ ansible_mounts[0].size_available | filesizeformat }}
+        dest: "{{ report_dir }}/{{ inventory_hostname }}_package_report.txt"
+      delegate_to: localhost
+    
+    - name: Collect Docker status if installed
+      command: docker --version
+      register: docker_status
+      failed_when: false
+      changed_when: false
+    
+    - name: Add Docker information to report
+      lineinfile:
+        path: "{{ report_dir }}/{{ inventory_hostname }}_package_report.txt"
+        line: |
+          
+          Docker Status:
+          {% if docker_status.rc == 0 %}
+          - Docker Version: {{ docker_status.stdout }}
+          - Docker Service: Installed
+          {% else %}
+          - Docker: Not Installed
+          {% endif %}
+        insertafter: EOF
+      delegate_to: localhost
+      when: docker_status is defined
+EOF
