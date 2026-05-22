@@ -1,0 +1,28 @@
+---
+- name: Create backup directory
+  file:
+    path: /opt/database-backups
+    state: directory
+    mode: '0755'
+
+- name: Create backup script for MySQL
+  template:
+    src: mysql-backup.sh.j2
+    dest: /usr/local/bin/mysql-backup.sh
+    mode: '0755'
+  when: database_type == "mysql"
+
+- name: Create backup script for PostgreSQL
+  template:
+    src: postgresql-backup.sh.j2
+    dest: /usr/local/bin/postgresql-backup.sh
+    mode: '0755'
+  when: database_type == "postgresql"
+
+- name: Schedule backup cron job
+  cron:
+    name: "Database Backup"
+    minute: "{{ backup_schedule_minute }}"
+    hour: "{{ backup_schedule_hour }}"
+    job: "/usr/local/bin/{{ database_type }}-backup.sh"
+EOF
