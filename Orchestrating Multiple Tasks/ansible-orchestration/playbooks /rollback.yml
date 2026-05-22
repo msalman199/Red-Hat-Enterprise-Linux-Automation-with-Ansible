@@ -1,0 +1,41 @@
+---
+- name: "Rollback Application Stack"
+  hosts: all
+  become: yes
+  vars:
+    rollback_services:
+      - httpd
+      - mariadb
+      - haproxy
+      
+  tasks:
+    - name: "Stop application services"
+      systemd:
+        name: "{{ item }}"
+        state: stopped
+      loop: "{{ rollback_services }}"
+      ignore_errors: yes
+
+    - name: "Remove application files"
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "/var/www/html/webapp"
+        - "/etc/httpd/conf.d/webapp.conf"
+        - "/etc/haproxy/haproxy.cfg.bak"
+
+    - name: "Remove firewall rules"
+      firewalld:
+        service: "{{ item }}"
+        permanent: yes
+        state: disabled
+        immediate: yes
+      loop:
+        - http
+        - mysql
+      ignore_errors: yes
+
+    - name: "Display rollback completion"
+      debug:
+        msg: "Rollback completed for {{ inventory_hostname }}"
