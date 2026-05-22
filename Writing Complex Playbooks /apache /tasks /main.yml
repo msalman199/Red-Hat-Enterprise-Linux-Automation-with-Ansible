@@ -1,0 +1,48 @@
+---
+- name: Install Apache and PHP packages
+  yum:
+    name:
+      - httpd
+      - php
+      - php-mysql
+      - php-json
+    state: present
+
+- name: Create web user
+  user:
+    name: "{{ web_user }}"
+    system: yes
+    shell: /bin/bash
+    home: /home/{{ web_user }}
+    create_home: yes
+
+- name: Configure Apache virtual host
+  template:
+    src: vhost.conf.j2
+    dest: /etc/httpd/conf.d/{{ app_name }}.conf
+    backup: yes
+  notify: restart apache
+
+- name: Create document root directory
+  file:
+    path: "{{ document_root }}"
+    state: directory
+    owner: apache
+    group: apache
+    mode: '0755'
+
+- name: Start and enable Apache service
+  systemd:
+    name: httpd
+    state: started
+    enabled: yes
+
+- name: Configure firewall for HTTP and HTTPS
+  firewalld:
+    service: "{{ item }}"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  loop:
+    - http
+    - https
