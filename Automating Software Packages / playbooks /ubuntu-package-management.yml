@@ -1,0 +1,82 @@
+---
+- name: Ubuntu Package Management
+  hosts: ubuntu_servers
+  become: yes
+  vars:
+    ubuntu_packages:
+      - software-properties-common
+      - apt-transport-https
+      - ca-certificates
+      - gnupg
+      - lsb-release
+      - tree
+      - net-tools
+      - dnsutils
+  
+  tasks:
+    - name: Update apt package cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+    
+    - name: Upgrade all packages
+      apt:
+        upgrade: dist
+        autoremove: yes
+        autoclean: yes
+      tags: update
+    
+    - name: Install essential packages
+      apt:
+        name: "{{ ubuntu_packages }}"
+        state: present
+    
+    - name: Install additional monitoring tools
+      apt:
+        name:
+          - htop
+          - iotop
+          - ncdu
+          - glances
+        state: present
+    
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+    
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+        update_cache: yes
+    
+    - name: Install Docker CE
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+    
+    - name: Start and enable Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+    
+    - name: Install Python packages using pip
+      pip:
+        name:
+          - docker
+          - requests
+        state: present
+    
+    - name: Verify installed packages
+      command: dpkg -l | grep -E "(docker|htop|python3-pip)"
+      register: installed_packages
+      changed_when: false
+    
+    - name: Display installed packages
+      debug:
+        msg: "Installed packages: {{ installed_pa
