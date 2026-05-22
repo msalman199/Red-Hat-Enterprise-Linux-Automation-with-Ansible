@@ -1,0 +1,124 @@
+---
+- name: Robust Package Management with Error Handling
+  hosts: all_servers
+  become: yes
+  vars:
+    critical_packages:
+      - openssh-server
+      - sudo
+      - systemd
+    
+    optional_packages:
+      - vim-enhanced
+      - emacs
+      - nano
+    
+    backup_location: /tmp/package_backup
+  
+  tasks:
+    - name: Create backup directory
+      file:
+        path: "{{ backup_location }}"
+        state: directory
+        mode: '0755'
+    
+    - name: Backup current package list (Red Hat)
+      shell: rpm -qa > {{ backup_location }}/packages_before_{{ ansible_date_time.epoch }}.txt
+      when: ansible_os_family == "RedHat"
+    
+    - name: Backup current package list (Debian)
+      shell: dpkg -l > {{ backup_location }}/packages_before_{{ ansible_date_time.epoch }}.txt
+      when: ansible_os_family == "Debian"
+    
+    - name: Install critical packages with error handling
+      block:
+        - name: Install critical packages (Red Hat)
+          yum:
+            name: "{{ critical_packages }}"
+            state: present
+          when: ansible_os_family == "RedHat"
+        
+        - name: Install critical packages (Debian)
+          apt:
+            name: "{{ critical_packages }}"
+            state: present
+          when: ansible_os_family == "Debian"
+      
+      rescue:
+        - name: Log critical package installation failure
+          lineinfile:
+            path: "{{ backup_location }}/installation_errors.log"
+            line: "{{ ansible_date_time.iso8601 }}: Failed to install critical packages on {{ inventory_hostname }}"
+            create: yes
+        
+        - name: Fail the play for critical package errors
+          fail:
+            msg: "Critical package installation failed on {{ inventory_hostname }}"
+    
+    - name: Install optional packages with graceful failure handling
+      block:
+        - name: Install optional packages (Red Hat)
+          yum:
+            name: "{{ optional_packages }}"
+            state: present
+          when: ansible_os_family == "RedHat"
+        
+        - name: Install optional packages (Debian)
+          apt:
+            name: "{{ optional_packages }}"
+            state: present
+          when: ansible_os_family == "Debian"
+      
+      rescue:
+        - name: Log optional package installation issues
+          lineinfile:
+            path: "{{ backup_location }}/installation_warnings.log"
+            line: "{{ ansible_date_time.iso8601 }}: Some optional packages failed to install on {{ inventory_hostname }}"
+            create: yes
+        
+        - name: Continue despite optional package failures
+          debug:
+            msg: "Optional package installation had issues, but continuing..."
+    
+    - name: Verify critical services are running
+      systemd:
+        name: "{{ item }}"
+        state: started
+      loop:
+        - sshd
+      ignore_errors: yes
+    
+    - name: Generate post-installation package list (Red Hat)
+      shell: rpm -qa > {{ backup_location }}/packages_after_{{ ansible_date_time.epoch }}.txt
+      when: ansible_os_family == "RedHat"
+    
+    - name: Generate post-installation package list (Debian)
+      shell: dpkg -l > {{ backup_location }}/packages_after_{{ ansible_date_time.epoch }}.txt
+      when: ansible_os_family == "Debian"
+    
+    - name: Create installation summary
+      template:
+        content: |
+          Package Installation Summary for {{ inventory_hostname }}
+          =========================================================
+          Date: {{ ansible_date_time.iso8601 }}
+          OS Family: {{ ansible_os_family }}
+          Distribution: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          
+          Critical Packages Installed:
+          {% for package in critical_packages %}
+          - {{ package }}
+          {% endfor %}
+          
+          Optional Packages Attempted:
+          {% for package in optional_packages %}
+          - {{ package }}
+          {% endfor %}
+          
+          Backup Location: {{ backup_location }}
+        dest: "{{ backup_location }}/installation_summary_{{ inventory_hostname }}.txt"
+    
+    - name: Display installation summary
+      debug:
+        msg: "Package installation completed. Summary saved to {{ backup_location }}/installation_summary_{{ inventory_hostname }}.txt"
+EOF
