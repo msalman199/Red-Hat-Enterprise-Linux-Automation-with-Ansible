@@ -1,0 +1,21 @@
+---
+- name: Include MySQL tasks
+  include_tasks: mysql.yml
+  when: database_type == "mysql"
+
+- name: Include PostgreSQL tasks
+  include_tasks: postgresql.yml
+  when: database_type == "postgresql"
+
+- name: Include security tasks
+  include_tasks: security.yml
+  when: security_hardening | bool
+
+- name: Include backup tasks
+  include_tasks: backup.yml
+  when: backup_enabled | bool
+
+- name: Include monitoring tasks
+  include_tasks: monitoring.yml
+  when: monitoring_enabled | bool
+EOF
