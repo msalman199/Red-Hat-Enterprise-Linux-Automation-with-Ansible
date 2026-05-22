@@ -1,0 +1,14 @@
+---
+- name: Complete Web Server Deployment
+  hosts: web_servers
+  become: yes
+  
+  roles:
+    - common
+    - apache-webserver
+  
+  post_tasks:
+    - name: Display deployment completion message
+      debug:
+        msg: "Web server deployment completed successfully on {{ inventory_hostname }}"
+EOF
