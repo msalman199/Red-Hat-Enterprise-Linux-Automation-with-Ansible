@@ -1,0 +1,77 @@
+---
+- name: Deploy Website Content
+  hosts: webservers
+  become: yes
+  vars:
+    document_root: /var/www/html
+    
+  tasks:
+    - name: Deploy main HTML page from template
+      template:
+        src: ../templates/index.html.j2
+        dest: "{{ document_root }}/index.html"
+        owner: apache
+        group: apache
+        mode: '0644'
+      notify: reload apache
+      tags: deploy
+
+    - name: Deploy CSS file
+      copy:
+        src: ../files/style.css
+        dest: "{{ document_root }}/style.css"
+        owner: apache
+        group: apache
+        mode: '0644'
+      tags: deploy
+
+    - name: Create images directory
+      file:
+        path: "{{ document_root }}/images"
+        state: directory
+        owner: apache
+        group: apache
+        mode: '0755'
+      tags: deploy
+
+    - name: Deploy additional HTML pages
+      copy:
+        content: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>About - {{ inventory_hostname }}</title>
+              <link rel="stylesheet" href="style.css">
+          </head>
+          <body>
+              <div class="container">
+                  <h1>About This Server</h1>
+                  <p>This is the about page for {{ inventory_hostname }}</p>
+                  <p><a href="index.html" class="button">Back to Home</a></p>
+              </div>
+          </body>
+          </html>
+        dest: "{{ document_root }}/about.html"
+        owner: apache
+        group: apache
+        mode: '0644'
+      tags: deploy
+
+    - name: Verify web content deployment
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}"
+        method: GET
+        status_code: 200
+      register: web_check
+      tags: verify
+
+    - name: Display web check results
+      debug:
+        msg: "Website is accessible. Status: {{ web_check.status }}"
+      tags: verify
+
+  handlers:
+    - name: reload apache
+      systemd:
+        name: httpd
+        state: reloaded
