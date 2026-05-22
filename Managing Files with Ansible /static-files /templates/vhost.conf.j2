@@ -1,0 +1,46 @@
+# Virtual Host Configuration for {{ server_name }}
+# Generated automatically by Ansible
+
+<VirtualHost *:{{ http_port | default(80) }}>
+    ServerName {{ server_name }}
+    {% if server_aliases is defined %}
+    {% for alias in server_aliases %}
+    ServerAlias {{ alias }}
+    {% endfor %}
+    {% endif %}
+    
+    DocumentRoot {{ document_root | default('/var/www/html') }}
+    
+    # Logging Configuration
+    ErrorLog {{ log_dir }}/{{ server_name }}_error.log
+    CustomLog {{ log_dir }}/{{ server_name }}_access.log combined
+    
+    # Security Headers
+    {% if enable_security_headers | default(true) %}
+    Header always set X-Content-Type-Options nosniff
+    Header always set X-Frame-Options DENY
+    Header always set X-XSS-Protection "1; mode=block"
+    {% endif %}
+    
+    # Environment-specific settings
+    {% if ansible_hostname == 'web1' %}
+    # Primary server configuration
+    SetEnv SERVER_ROLE "primary"
+    {% else %}
+    # Secondary server configuration
+    SetEnv SERVER_ROLE "secondary"
+    {% endif %}
+    
+    <Directory "{{ document_root }}">
+        Options {{ directory_options | default('Indexes FollowSymLinks') }}
+        AllowOverride {{ allow_override | default('None') }}
+        Require all granted
+    </Directory>
+    
+    {% if ssl_enabled | default(false) %}
+    # SSL Configuration
+    SSLEngine on
+    SSLCertificateFile {{ ssl_cert_path }}
+    SSLCertificateKeyFile {{ ssl_key_path }}
+    {% endif %}
+</VirtualHost>
