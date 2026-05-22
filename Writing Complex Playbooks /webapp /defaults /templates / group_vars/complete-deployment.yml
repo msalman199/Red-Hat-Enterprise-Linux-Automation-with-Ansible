@@ -1,0 +1,145 @@
+---
+- name: Pre-deployment Tasks
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update system packages
+      yum:
+        name: "*"
+        state: latest
+        update_cache: yes
+    
+    - name: Install common packages
+      yum:
+        name:
+          - vim
+          - wget
+          - curl
+          - net-tools
+          - htop
+        state: present
+    
+    - name: Set timezone
+      timezone:
+        name: "{{ timezone }}"
+    
+    - name: Start and enable firewalld
+      systemd:
+        name: firewalld
+        state: started
+        enabled: yes
+  tags:
+    - preparation
+    - system-update
+
+- name: Configure Database Servers
+  hosts: database_servers
+  become: yes
+  pre_tasks:
+    - name: Check available disk space
+      shell: df -h /var/lib/mysql
+      register: disk_space
+      changed_when: false
+    
+    - name: Display disk space
+      debug:
+        var: disk_space.stdout_lines
+  
+  roles:
+    - mysql
+  
+  post_tasks:
+    - name: Verify MySQL is running
+      systemd:
+        name: mysqld
+      register: mysql_status
+    
+    - name: Test MySQL connection
+      mysql_db:
+        name: "{{ mysql_database }}"
+        login_user: root
+        login_password: "{{ mysql_root_password }}"
+        state: present
+      register: mysql_test
+    
+    - name: Display MySQL status
+      debug:
+        msg: "MySQL service is {{ mysql_status.status.ActiveState }} and database connection is {{ 'working' if mysql_test is succeeded else 'failed' }}"
+  
+  tags:
+    - database
+
+- name: Configure Web Servers
+  hosts: web_servers
+  become: yes
+  pre_tasks:
+    - name: Check Apache package availability
+      yum:
+        list: httpd
+      register: apache_package
+    
+    - name: Display Apache package info
+      debug:
+        msg: "Apache package version: {{ apache_package.results[0].version }}"
+  
+  roles:
+    - apache
+    - webapp
+  
+  post_tasks:
+    - name: Wait for Apache to be ready
+      wait_for:
+        port: 80
+        host: "{{ ansible_default_ipv4.address }}"
+        delay: 5
+        timeout: 30
+    
+    - name: Test web application connectivity
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}/{{ app_name }}"
+        method: GET
+        return_content: yes
+      register: webapp_test
+      retries: 3
+      delay: 5
+    
+    - name: Display web application test results
+      debug:
+        msg: "Web application is {{ 'accessible' if webapp_test.status == 200 else 'not accessible' }}"
+  
+  tags:
+    - webserver
+
+- name: Post-deployment Verification
+  hosts: all
+  become: yes
+  tasks:
+    - name: Check system load
+      shell: uptime
+      register: system_load
+      changed_when: false
+    
+    - name: Display system load
+      debug:
+        var: system_load.stdout
+    
+    - name: Check memory usage
+      shell: free -h
+      register: memory_usage
+      changed_when: false
+    
+    - name: Display memory usage
+      debug:
+        var: memory_usage.stdout_lines
+    
+    - name: Generate deployment report
+      template:
+        src: deployment-report.j2
+        dest: /tmp/deployment-report.txt
+        mode: '0644'
+      delegate_to: localhost
+      run_once: true
+  
+  tags:
+    - verification
+    - reporting
