@@ -1,0 +1,35 @@
+---
+- name: Install Basic Software Packages
+  hosts: all_servers
+  become: yes
+  vars:
+    common_packages:
+      - git
+      - curl
+      - wget
+      - vim
+      - htop
+  
+  tasks:
+    - name: Install packages on Red Hat-based systems
+      yum:
+        name: "{{ common_packages }}"
+        state: present
+      when: ansible_os_family == "RedHat"
+    
+    - name: Install packages on Debian-based systems
+      apt:
+        name: "{{ common_packages }}"
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+    
+    - name: Verify git installation
+      command: git --version
+      register: git_version
+      changed_when: false
+    
+    - name: Display git version
+      debug:
+        msg: "Git version installed: {{ git_version.stdout }}"
+EOF
