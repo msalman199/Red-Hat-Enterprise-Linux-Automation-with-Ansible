@@ -1,0 +1,7 @@
+---
+mysql_root_password: "SecurePass123!"
+mysql_database: "webapp_db"
+mysql_user: "webapp_user"
+mysql_password: "WebApp123!"
+mysql_port: 3306
+mysql_bind_address: "0.0.0.0"
