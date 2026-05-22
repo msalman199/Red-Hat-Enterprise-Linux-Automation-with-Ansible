@@ -1,0 +1,36 @@
+---
+- name: Troubleshoot Firewalld Issues
+  hosts: all
+  become: yes
+  tasks:
+    - name: Check if firewalld is installed
+      package_facts:
+        manager: auto
+
+    - name: Install firewalld if missing
+      package:
+        name: firewalld
+        state: present
+      when: "'firewalld' not in ansible_facts.packages"
+
+    - name: Stop conflicting iptables service
+      systemd:
+        name: iptables
+        state: stopped
+        enabled: no
+      ignore_errors: yes
+
+    - name: Start and enable firewalld
+      systemd:
+        name: firewalld
+        state: started
+        enabled: yes
+
+    - name: Verify firewalld status
+      command: systemctl status firewalld
+      register: firewalld_status
+
+    - name: Display firewalld status
+      debug:
+        msg: "{{ firewalld_status.stdout_lines }}"
+EOF
