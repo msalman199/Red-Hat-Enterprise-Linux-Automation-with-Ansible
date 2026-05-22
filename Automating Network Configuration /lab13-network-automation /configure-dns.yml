@@ -1,0 +1,58 @@
+---
+- name: Configure DNS Settings
+  hosts: all
+  become: yes
+  vars:
+    dns_servers:
+      primary: "8.8.8.8"
+      secondary: "8.8.4.4"
+      tertiary: "1.1.1.1"
+    search_domains:
+      - "example.com"
+      - "lab.local"
+      - "internal.net"
+  
+  tasks:
+    - name: Configure DNS servers in NetworkManager connection
+      community.general.nmcli:
+        conn_name: "{{ ansible_default_ipv4.interface }}"
+        type: ethernet
+        dns4: 
+          - "{{ dns_servers.primary }}"
+          - "{{ dns_servers.secondary }}"
+          - "{{ dns_servers.tertiary }}"
+        dns4_search: "{{ search_domains }}"
+        state: present
+      notify: restart_network
+      
+    - name: Create custom resolv.conf backup
+      copy:
+        src: /etc/resolv.conf
+        dest: /etc/resolv.conf.backup
+        remote_src: yes
+        
+    - name: Configure /etc/resolv.conf
+      template:
+        src: resolv.conf.j2
+        dest: /etc/resolv.conf
+        backup: yes
+      notify: test_dns
+      
+    - name: Set DNS resolution priority
+      lineinfile:
+        path: /etc/nsswitch.conf
+        regexp: '^hosts:'
+        line: 'hosts: files dns myhostname'
+        backup: yes
+
+  handlers:
+    - name: restart_network
+      service:
+        name: NetworkManager
+        state: restarted
+        
+    - name: test_dns
+      shell: "nslookup google.com"
+      register: dns_test
+      ignore_errors: yes
+EOF
