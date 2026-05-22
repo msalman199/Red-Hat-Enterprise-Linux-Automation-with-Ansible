@@ -1,0 +1,44 @@
+---
+- name: Basic Conditionals Demo
+  hosts: all
+  gather_facts: yes
+  vars:
+    install_web_server: true
+    environment_type: "production"
+    
+  tasks:
+    - name: Install Apache web server (only if variable is true)
+      yum:
+        name: httpd
+        state: present
+      when: install_web_server == true
+      
+    - name: Start Apache service (only on production)
+      service:
+        name: httpd
+        state: started
+        enabled: yes
+      when: environment_type == "production"
+      
+    - name: Display message for development environment
+      debug:
+        msg: "This is a development environment - web server not started"
+      when: environment_type == "development"
+      
+    - name: Install development tools (only on CentOS/RHEL)
+      yum:
+        name:
+          - git
+          - vim
+          - curl
+        state: present
+      when: ansible_os_family == "RedHat"
+      
+    - name: Install development tools (only on Ubuntu/Debian)
+      apt:
+        name:
+          - git
+          - vim
+          - curl
+        state: present
+      when: ansible_os_family == "Debian"
