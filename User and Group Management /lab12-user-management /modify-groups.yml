@@ -1,0 +1,51 @@
+---
+- name: Modify User Group Memberships
+  hosts: local
+  become: yes
+  tasks:
+    - name: Add alice to testers group (cross-functional role)
+      user:
+        name: alice
+        groups: developers,testers
+        append: yes
+
+    - name: Add bob to a temporary project group
+      group:
+        name: project-alpha
+        state: present
+        gid: 3005
+
+    - name: Add bob to project-alpha group
+      user:
+        name: bob
+        groups: developers,project-alpha
+        append: yes
+
+    - name: Remove eve from contractors and add to developers (conversion)
+      user:
+        name: eve
+        groups: developers
+        append: no
+
+    - name: Create a special admin group
+      group:
+        name: sysadmins
+        state: present
+        gid: 3006
+
+    - name: Add david to sysadmins group
+      user:
+        name: david
+        groups: managers,developers,testers,sysadmins
+        append: no
+
+    - name: Display group memberships
+      shell: |
+        for user in alice bob carol david eve; do
+          echo "User $user groups: $(groups $user)"
+        done
+      register: group_memberships
+
+    - name: Show group membership information
+      debug:
+        msg: "{{ group_memberships.stdout_lines }}"
