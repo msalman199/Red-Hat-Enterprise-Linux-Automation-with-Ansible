@@ -1,0 +1,71 @@
+---
+- name: Master Network Configuration Playbook
+  hosts: all
+  become: yes
+  vars:
+    network_interface: "{{ ansible_default_ipv4.interface }}"
+    base_ip_network: "192.168.1"
+    dns_servers: ["8.8.8.8", "8.8.4.4", "1.1.1.1"]
+    search_domains: ["lab.local", "example.com"]
+    
+  tasks:
+    - name: Gather network facts
+      setup:
+        gather_subset: network
+        
+    - name: Display current network interface
+      debug:
+        msg: "Configuring interface: {{ network_interface }}"
+        
+    - name: Configure primary network connection
+      community.general.nmcli:
+        conn_name: "primary-{{ network_interface }}"
+        ifname: "{{ network_interface }}"
+        type: ethernet
+        ip4: "{{ base_ip_network }}.{{ 100 + ansible_play_hosts.index(inventory_hostname) }}/24"
+        gw4: "{{ base_ip_network }}.1"
+        dns4: "{{ dns_servers }}"
+        dns4_search: "{{ search_domains }}"
+        state: present
+      register: primary_config
+      
+    - name: Activate primary connection
+      community.general.nmcli:
+        conn_name: "primary-{{ network_interface }}"
+        state: up
+      when: primary_config.changed
+      
+    - name: Add static routes for internal networks
+      community.general.nmcli:
+        conn_name: "primary-{{ network_interface }}"
+        type: ethernet
+        routes4:
+          - "10.0.0.0/8 {{ base_ip_network }}.1"
+          - "172.16.0.0/12 {{ base_ip_network }}.1"
+        state: present
+        
+    - name: Verify network connectivity
+      ping:
+        data: "{{ base_ip_network }}.1"
+        count: 3
+      register: ping_result
+      ignore_errors: yes
+      
+    - name: Display connectivity results
+      debug:
+        msg: "Gateway connectivity: {{ 'SUCCESS' if ping_result.rc == 0 else 'FAILED' }}"
+        
+    - name: Test DNS resolution
+      shell: "nslookup {{ item }}"
+      loop:
+        - "google.com"
+        - "github.com"
+        - "redhat.com"
+      register: dns_tests
+      ignore_errors: yes
+      
+    - name: Display DNS test results
+      debug:
+        msg: "DNS resolution for {{ item.item }}: {{ 'SUCCESS' if item.rc == 0 else 'FAILED' }}"
+      loop: "{{ dns_tests.results }}"
+EOF
