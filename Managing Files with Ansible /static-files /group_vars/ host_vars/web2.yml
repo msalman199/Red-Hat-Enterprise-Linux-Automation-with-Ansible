@@ -1,0 +1,7 @@
+---
+server_name: web2.example.com
+server_aliases:
+  - www.web2.example.com
+  - secondary.example.com
+document_root: /var/www/web2
+max_connections: 100
