@@ -1,0 +1,23 @@
+# {{ app_name }} Configuration File
+# Environment: {{ environment }}
+# Generated: {{ ansible_date_time.iso8601 }}
+
+[database]
+host = {{ config.database_host }}
+port = 3306
+name = {{ app_name }}_{{ environment }}
+
+[application]
+debug = {{ config.debug_mode | lower }}
+log_level = {{ config.log_level }}
+version = {{ app_version }}
+
+[features]
+backup_enabled = {{ config.backup_enabled | lower }}
+monitoring_enabled = {{ config.monitoring_enabled | lower }}
+
+{% if environment == 'production' %}
+[security]
+ssl_enabled = true
+session_timeout = 1800
+{% endif %}
