@@ -1,0 +1,55 @@
+---
+- name: Validate Network Configuration
+  hosts: all
+  become: yes
+  
+  tasks:
+    - name: Check network interface status
+      shell: "nmcli device status"
+      register: device_status
+      
+    - name: Display interface status
+      debug:
+        var: device_status.stdout_lines
+        
+    - name: Check active connections
+      shell: "nmcli connection show --active"
+      register: active_connections
+      
+    - name: Display active connections
+      debug:
+        var: active_connections.stdout_lines
+        
+    - name: Test internet connectivity
+      uri:
+        url: "http://www.google.com"
+        method: HEAD
+        timeout: 10
+      register: internet_test
+      ignore_errors: yes
+      
+    - name: Display internet connectivity status
+      debug:
+        msg: "Internet connectivity: {{ 'AVAILABLE' if internet_test.status == 200 else 'UNAVAILABLE' }}"
+        
+    - name: Generate network configuration report
+      shell: |
+        echo "=== Network Configuration Report ===" > /tmp/network_report.txt
+        echo "Hostname: $(hostname)" >> /tmp/network_report.txt
+        echo "Date: $(date)" >> /tmp/network_report.txt
+        echo "" >> /tmp/network_report.txt
+        echo "=== IP Configuration ===" >> /tmp/network_report.txt
+        ip addr show >> /tmp/network_report.txt
+        echo "" >> /tmp/network_report.txt
+        echo "=== Routing Table ===" >> /tmp/network_report.txt
+        ip route show >> /tmp/network_report.txt
+        echo "" >> /tmp/network_report.txt
+        echo "=== DNS Configuration ===" >> /tmp/network_report.txt
+        cat /etc/resolv.conf >> /tmp/network_report.txt
+        
+    - name: Fetch network reports
+      fetch:
+        src: /tmp/network_report.txt
+        dest: "./reports/{{ inventory_hostname }}_network_report.txt"
+        flat: yes
+EOF
