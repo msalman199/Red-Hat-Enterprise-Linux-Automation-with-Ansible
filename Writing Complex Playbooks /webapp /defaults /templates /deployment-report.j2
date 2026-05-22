@@ -1,0 +1,41 @@
+DEPLOYMENT REPORT
+=================
+Generated: {{ ansible_date_time.iso8601 }}
+Playbook: {{ ansible_playbook_python }}
+
+INFRASTRUCTURE SUMMARY
+======================
+Total Servers: {{ groups['all'] | length }}
+Web Servers: {{ groups['web_servers'] | length }}
+Database Servers: {{ groups['database_servers'] | length }}
+
+WEB SERVERS
+===========
+{% for host in groups['web_servers'] %}
+- {{ host }}: {{ hostvars[host]['ansible_default_ipv4']['address'] }}
+  OS: {{ hostvars[host]['ansible_distribution'] }} {{ hostvars[host]['ansible_distribution_version'] }}
+  Apache Status: Running
+  Application: {{ app_name }}
+{% endfor %}
+
+DATABASE SERVERS
+================
+{% for host in groups['database_servers'] %}
+- {{ host }}: {{ hostvars[host]['ansible_default_ipv4']['address'] }}
+  OS: {{ hostvars[host]['ansible_distribution'] }} {{ hostvars[host]['ansible_distribution_version'] }}
+  MySQL Status: Running
+  Database: {{ mysql_database }}
+{% endfor %}
+
+DEPLOYMENT STATUS
+=================
+Status: SUCCESS
+Timestamp: {{ ansible_date_time.iso8601 }}
+Duration: {{ ansible_play_batch | length }} servers configured
+
+NEXT STEPS
+==========
+1. Monitor application logs: /var/log/httpd/
+2. Check database performance: MySQL slow query log
+3. Verify backup procedures
+4. Set up monitoring and alerting
