@@ -1,0 +1,7 @@
+- name: Deploy Apache Web Server using Custom Role
+  hosts: web_servers
+  become: yes
+  
+  roles:
+    - apache-webserver
+EOF
