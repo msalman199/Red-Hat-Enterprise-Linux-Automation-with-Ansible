@@ -1,0 +1,36 @@
+Task 1: Create Handlers to Restart Services
+Objective: Set up handlers to restart a service after a configuration change.
+
+Steps:
+
+Create a simple Ansible playbook with a task that makes a configuration change. Then, create a handler to restart a service (e.g., nginx) if the configuration file changes.
+
+Example Playbook:
+```yaml
+name: Configure nginx hosts: localhost tasks:
+
+name: Change nginx configuration lineinfile: path: /etc/nginx/nginx.conf regexp: '^worker_processes' line: 'worker_processes 4;' notify:
+restart nginx
+handlers:
+
+name: restart nginx service: name: nginx state: restarted
+
+Save the playbook and run it using the following command:
+
+ansible-playbook /path/to/playbook.yml
+Task 2: Use notify to Call Handlers within Tasks
+Objective: Trigger handlers using the notify directive within tasks.
+
+Steps:
+
+The notify directive in the playbook above will call the restart nginx handler if the task to change the nginx configuration is successful.
+
+After running the playbook, verify if the service has been restarted.
+
+Verification:
+Verification Steps:
+
+Check the status of the nginx service:
+
+systemctl status nginx
+Ensure that the service has been restarted after the configuration change by confirming the service is running.
