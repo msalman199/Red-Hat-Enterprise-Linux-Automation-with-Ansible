@@ -1,0 +1,23 @@
+---
+- name: Install security packages
+  apt:
+    name:
+      - fail2ban
+      - ufw
+    state: present
+
+- name: Configure firewall rules
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - "{{ mysql_port if database_type == 'mysql' else postgresql_port }}"
+    - "22"  # SSH
+
+- name: Enable firewall
+  ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+EOF
