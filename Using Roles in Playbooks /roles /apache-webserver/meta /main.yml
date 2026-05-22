@@ -1,0 +1,34 @@
+---
+# Role metadata for apache-webserver
+
+galaxy_info:
+  author: Al Nafi Learning Lab
+  description: Apache HTTP Server installation and configuration role
+  company: Al Nafi
+  license: MIT
+  min_ansible_version: 2.9
+  
+  platforms:
+    - name: EL
+      versions:
+        - 7
+        - 8
+        - 9
+    - name: Ubuntu
+      versions:
+        - 18.04
+        - 20.04
+        - 22.04
+  
+  galaxy_tags:
+    - web
+    - apache
+    - httpd
+    - webserver
+
+dependencies: []
+  # List role dependencies here
+  # Example:
+  # - role: common
+  # - role: firewall
+EOF
