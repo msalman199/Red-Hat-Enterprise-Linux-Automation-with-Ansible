@@ -1,0 +1,54 @@
+---
+- name: Test Firewall Configuration
+  hosts: all
+  become: yes
+  tasks:
+    - name: Test SSH connectivity (should work)
+      wait_for:
+        host: "{{ inventory_hostname }}"
+        port: 22
+        timeout: 5
+      delegate_to: localhost
+      ignore_errors: yes
+      register: ssh_test
+
+    - name: Test HTTP connectivity (should work on web servers)
+      wait_for:
+        host: "{{ inventory_hostname }}"
+        port: 80
+        timeout: 5
+      delegate_to: localhost
+      ignore_errors: yes
+      register: http_test
+
+    - name: Test blocked port (should fail)
+      wait_for:
+        host: "{{ inventory_hostname }}"
+        port: 23
+        timeout: 5
+      delegate_to: localhost
+      ignore_errors: yes
+      register: telnet_test
+
+    - name: Generate firewall test report
+      debug:
+        msg:
+          - "=== Firewall Test Results for {{ inventory_hostname }} ==="
+          - "SSH (port 22): {{ 'PASS' if ssh_test.failed is not defined else 'FAIL' }}"
+          - "HTTP (port 80): {{ 'PASS' if http_test.failed is not defined else 'BLOCKED' }}"
+          - "Telnet (port 23): {{ 'BLOCKED' if telnet_test.failed is defined else 'FAIL - Should be blocked!' }}"
+
+    - name: Save firewall configuration backup
+      command: firewall-cmd --list-all
+      register: firewall_backup
+
+    - name: Create configuration backup file
+      copy:
+        content: "{{ firewall_backup.stdout }}"
+        dest: "/tmp/firewall-backup-{{ inventory_hostname }}.txt"
+        mode: '0644'
+
+    - name: Display backup location
+      debug:
+        msg: "Firewall configuration backed up to /tmp/firewall-backup-{{ inventory_hostname }}.txt"
+EOF
