@@ -1,0 +1,54 @@
+---
+- name: Configure Advanced Firewall Rules
+  hosts: webservers
+  become: yes
+  vars:
+    custom_ports:
+      - port: 8080
+        protocol: tcp
+        description: "Custom web application"
+      - port: 3306
+        protocol: tcp
+        description: "MySQL database"
+      - port: 5432
+        protocol: tcp
+        description: "PostgreSQL database"
+
+  tasks:
+    - name: Open custom TCP ports
+      firewalld:
+        port: "{{ item.port }}/{{ item.protocol }}"
+        permanent: yes
+        state: enabled
+        immediate: yes
+      loop: "{{ custom_ports }}"
+
+    - name: Block specific port (example: 23/tcp for telnet)
+      firewalld:
+        port: 23/tcp
+        permanent: yes
+        state: disabled
+        immediate: yes
+
+    - name: Allow specific source IP for SSH
+      firewalld:
+        rich_rule: 'rule family="ipv4" source address="192.168.1.0/24" service name="ssh" accept'
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: Create port range rule
+      firewalld:
+        port: 60000-61000/tcp
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: Verify firewall configuration
+      command: firewall-cmd --list-all
+      register: advanced_rules
+
+    - name: Display advanced firewall rules
+      debug:
+        msg: "{{ advanced_rules.stdout_lines }}"
+EOF
