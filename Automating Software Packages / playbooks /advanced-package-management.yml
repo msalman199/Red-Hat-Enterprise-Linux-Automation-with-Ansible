@@ -1,0 +1,65 @@
+---
+- name: Advanced Package Management
+  hosts: all_servers
+  become: yes
+  vars:
+    development_packages:
+      rhel:
+        - name: python3
+          state: present
+        - name: python3-pip
+          state: present
+        - name: nodejs
+          state: present
+        - name: npm
+          state: present
+      ubuntu:
+        - name: python3
+          state: present
+        - name: python3-pip
+          state: present
+        - name: nodejs
+          state: present
+        - name: npm
+          state: present
+    
+    packages_to_remove:
+      - telnet
+      - rsh
+  
+  tasks:
+    - name: Install development packages on Red Hat systems
+      yum:
+        name: "{{ item.name }}"
+        state: "{{ item.state }}"
+      loop: "{{ development_packages.rhel }}"
+      when: ansible_os_family == "RedHat"
+    
+    - name: Install development packages on Ubuntu systems
+      apt:
+        name: "{{ item.name }}"
+        state: "{{ item.state }}"
+        update_cache: yes
+      loop: "{{ development_packages.ubuntu }}"
+      when: ansible_os_family == "Debian"
+    
+    - name: Remove insecure packages from Red Hat systems
+      yum:
+        name: "{{ packages_to_remove }}"
+        state: absent
+      when: ansible_os_family == "RedHat"
+    
+    - name: Remove insecure packages from Ubuntu systems
+      apt:
+        name: "{{ packages_to_remove }}"
+        state: absent
+      when: ansible_os_family == "Debian"
+    
+    - name: Check Python version
+      command: python3 --version
+      register: python_version
+      changed_when: false
+    
+    - name: Display Python version
+      debug:
+        
