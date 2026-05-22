@@ -1,0 +1,110 @@
+---
+- name: Universal Package Management
+  hosts: all_servers
+  become: yes
+  vars:
+    web_server_packages:
+      RedHat:
+        - httpd
+        - mod_ssl
+        - httpd-tools
+      Debian:
+        - apache2
+        - apache2-utils
+        - ssl-cert
+    
+    database_packages:
+      RedHat:
+        - mariadb-server
+        - mariadb
+        - python3-PyMySQL
+      Debian:
+        - mariadb-server
+        - mariadb-client
+        - python3-pymysql
+    
+    monitoring_packages:
+      RedHat:
+        - nagios-plugins-all
+        - nrpe
+      Debian:
+        - nagios-plugins
+        - nagios-nrpe-server
+  
+  tasks:
+    - name: Update package cache (Red Hat)
+      yum:
+        update_cache: yes
+      when: ansible_os_family == "RedHat"
+    
+    - name: Update package cache (Debian)
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+    
+    - name: Install web server packages
+      package:
+        name: "{{ web_server_packages[ansible_os_family] }}"
+        state: present
+    
+    - name: Install database packages
+      package:
+        name: "{{ database_packages[ansible_os_family] }}"
+        state: present
+    
+    - name: Start and enable web server (Red Hat)
+      systemd:
+        name: httpd
+        state: started
+        enabled: yes
+      when: ansible_os_family == "RedHat"
+    
+    - name: Start and enable web server (Debian)
+      systemd:
+        name: apache2
+        state: started
+        enabled: yes
+      when: ansible_os_family == "Debian"
+    
+    - name: Start and enable database server
+      systemd:
+        name: mariadb
+        state: started
+        enabled: yes
+    
+    - name: Install monitoring packages (ignore errors for unavailable packages)
+      package:
+        name: "{{ monitoring_packages[ansible_os_family] }}"
+        state: present
+      ignore_errors: yes
+    
+    - name: Create a simple index.html file
+      copy:
+        content: |
+          <html>
+          <head><title>Ansible Managed Server</title></head>
+          <body>
+          <h1>Welcome to {{ inventory_hostname }}</h1>
+          <p>This server is managed by Ansible</p>
+          <p>OS Family: {{ ansible_os_family }}</p>
+          <p>Distribution: {{ ansible_distribution }} {{ ansible_distribution_version }}</p>
+          </body>
+          </html>
+        dest: /var/www/html/index.html
+        owner: root
+        group: root
+        mode: '0644'
+    
+    - name: Test web server connectivity
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}"
+        method: GET
+        status_code: 200
+      delegate_to: localhost
+      register: web_test
+    
+    - name: Display web server test results
+      debug:
+        msg: "Web server is responding: {{ web_test.status == 200 }}"
+EOF
