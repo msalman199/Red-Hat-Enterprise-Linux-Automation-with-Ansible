@@ -1,0 +1,92 @@
+---
+- name: Combined Conditionals and Loops Demo
+  hosts: all
+  gather_facts: yes
+  vars:
+    server_role: "web"  # Options: web, database, monitoring
+    environment: "production"  # Options: development, staging, production
+    
+    applications:
+      web:
+        packages:
+          - httpd
+          - php
+          - php-mysql
+        services:
+          - httpd
+        ports:
+          - 80
+          - 443
+      database:
+        packages:
+          - mariadb-server
+          - mariadb
+        services:
+          - mariadb
+        ports:
+          - 3306
+      monitoring:
+        packages:
+          - nagios
+          - htop
+          - iotop
+        services:
+          - nagios
+        ports:
+          - 8080
+          
+  tasks:
+    - name: Install packages based on server role
+      yum:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ applications[server_role].packages }}"
+      when: 
+        - server_role in applications
+        - ansible_os_family == "RedHat"
+        
+    - name: Start and enable services for the assigned role
+      service:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      loop: "{{ applications[server_role].services }}"
+      when: 
+        - server_role in applications
+        - environment == "production"
+        
+    - name: Configure firewall ports for production
+      firewalld:
+        port: "{{ item }}/tcp"
+        permanent: yes
+        state: enabled
+        immediate: yes
+      loop: "{{ applications[server_role].ports }}"
+      when: 
+        - server_role in applications
+        - environment == "production"
+        - ansible_facts['packages']['firewalld'] is defined
+      ignore_errors: yes
+      
+    - name: Create application-specific directories
+      file:
+        path: "/opt/{{ server_role }}/{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - config
+        - logs
+        - data
+        - backup
+      when: server_role in applications
+      
+    - name: Display configuration summary
+      debug:
+        msg: |
+          Server Configuration Summary:
+          - Role: {{ server_role }}
+          - Environment: {{ environment }}
+          - Packages: {{ applications[server_role].packages | join(', ') }}
+          - Services: {{ applications[server_role].services | join(', ') }}
+          - Ports: {{ applications[server_role].ports | join(', ') }}
+      when: server_role in applications
