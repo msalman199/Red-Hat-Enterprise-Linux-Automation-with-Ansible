@@ -1,0 +1,111 @@
+---
+- name: Complete Web Server Setup and Configuration
+  hosts: webservers
+  become: yes
+  vars:
+    apache_package: httpd
+    apache_service: httpd
+    document_root: /var/www/html
+    
+  pre_tasks:
+    - name: Gather system facts
+      setup:
+      tags: always
+
+  tasks:
+    # System preparation
+    - name: Update system packages
+      yum:
+        name: '*'
+        state: latest
+        update_cache: yes
+      tags: [update, system]
+
+    # Apache installation
+    - name: Install Apache and dependencies
+      yum:
+        name:
+          - "{{ apache_package }}"
+          - wget
+          - curl
+          - vim
+          - firewalld
+        state: present
+      tags: [install, apache]
+
+    # Apache configuration
+    - name: Configure Apache main configuration
+      template:
+        src: ../templates/httpd.conf.j2
+        dest: /etc/httpd/conf/httpd.conf
+        backup: yes
+        owner: root
+        group: root
+        mode: '0644'
+      notify: restart apache
+      tags: [configure, apache]
+
+    # Service management
+    - name: Start and enable Apache service
+      systemd:
+        name: "{{ apache_service }}"
+        state: started
+        enabled: yes
+      tags: [service, apache]
+
+    # Firewall configuration
+    - name: Start and enable firewalld
+      systemd:
+        name: firewalld
+        state: started
+        enabled: yes
+      tags: [firewall, service]
+
+    - name: Configure firewall for HTTP
+      firewalld:
+        service: http
+        permanent: yes
+        state: enabled
+        immediate: yes
+      tags: [firewall, apache]
+
+    # Web content deployment
+    - name: Deploy website content
+      include_tasks: deploy-content.yml
+      tags: [deploy, content]
+
+    # Verification
+    - name: Verify Apache is running
+      systemd:
+        name: "{{ apache_service }}"
+        state: started
+      register: apache_status
+      tags: [verify, service]
+
+    - name: Test web server response
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}"
+        method: GET
+        status_code: 200
+      register: web_response
+      tags: [verify, web]
+
+    - name: Display deployment summary
+      debug:
+        msg: |
+          Deployment Summary:
+          - Apache Status: {{ apache_status.status.ActiveState }}
+          - Web Response: {{ web_response.status }}
+          - Server URL: http://{{ ansible_default_ipv4.address }}
+      tags: [verify, summary]
+
+  handlers:
+    - name: restart apache
+      systemd:
+        name: "{{ apache_service }}"
+        state: restarted
+
+    - name: reload apache
+      systemd:
+        name: "{{ apache_service }}"
+        state: reloaded
