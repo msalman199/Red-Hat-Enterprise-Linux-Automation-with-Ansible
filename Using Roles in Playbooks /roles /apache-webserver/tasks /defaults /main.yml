@@ -1,0 +1,22 @@
+---
+# Default variables for apache-webserver role
+
+# Package and service names (will vary by OS)
+apache_package_name: httpd
+apache_service_name: httpd
+apache_user: apache
+apache_group: apache
+
+# Paths and directories
+document_root: /var/www/html
+apache_config_dir: /etc/httpd/conf.d
+
+# Site configuration
+site_name: default-site
+server_name: "{{ ansible_fqdn }}"
+server_admin: admin@example.com
+
+# Custom variables
+welcome_message: "Welcome to our Apache Web Server!"
+company_name: "Al Nafi Learning Lab"
+EOF
