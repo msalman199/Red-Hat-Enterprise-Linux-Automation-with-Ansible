@@ -1,0 +1,75 @@
+---
+- name: "Setup Basic Monitoring"
+  hosts: all
+  become: yes
+  
+  tasks:
+    - name: "Install monitoring tools"
+      yum:
+        name:
+          - htop
+          - iotop
+          - netstat-nat
+        state: present
+
+    - name: "Create monitoring script"
+      copy:
+        content: |
+          #!/bin/bash
+          echo "=== System Status Report ==="
+          echo "Hostname: $(hostname)"
+          echo "Date: $(date)"
+          echo "Uptime: $(uptime)"
+          echo "Disk Usage:"
+          df -h /
+          echo "Memory Usage:"
+          free -h
+          echo "Active Services:"
+          systemctl list-units --type=service --state=active | grep -E "(httpd|mariadb|haproxy)"
+        dest: /usr/local/bin/system-status.sh
+        mode: '0755'
+
+    - name: "Create monitoring cron job"
+      cron:
+        name: "System status monitoring"
+        minute: "*/15"
+        job: "/usr/local/bin/system-status.sh >> /var/log/system-status.log 2>&1"
+
+- name: "Validate Complete Stack"
+  hosts: localhost
+  gather_facts: no
+  
+  tasks:
+    - name: "Test database connectivity"
+      mysql_db:
+        name: "{{ db_name }}"
+        state: present
+        login_host: "{{ hostvars[groups['database_servers'][0]]['ansible_default_ipv4']['address'] }}"
+        login_user: "{{ db_user }}"
+        login_password: "{{ db_password }}"
+      delegate_to: "{{ groups['database_servers'][0] }}"
+
+    - name: "Test web servers individually"
+      uri:
+        url: "http://{{ item }}/webapp/"
+        method: GET
+        status_code: 200
+      loop: "{{ groups['web_servers'] }}"
+      register: web_test_results
+
+    - name: "Test load balancer"
+      uri:
+        url: "http://{{ groups['load_balancer'][0] }}"
+        method: GET
+        status_code: 200
+      register: lb_test_result
+
+    - name: "Display validation results"
+      debug:
+        msg: |
+          Validation Results:
+          Database: Connected
+          Web Servers: {{ web_test_results.results | length }} servers responding
+          Load Balancer: {{ 'Working' if lb_test_result.status == 200 else 'Failed' }}
+          
+          Access your application at: http://{{ groups['load_balancer'][0] }}
