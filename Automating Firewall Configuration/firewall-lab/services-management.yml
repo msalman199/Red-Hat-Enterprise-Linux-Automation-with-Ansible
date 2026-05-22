@@ -1,0 +1,74 @@
+---
+- name: Manage Firewall Services
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: List all available services
+      command: firewall-cmd --get-services
+      register: available_services
+
+    - name: Display first 20 available services
+      debug:
+        msg: "{{ available_services.stdout.split()[:20] }}"
+
+    - name: Enable common web services
+      firewalld:
+        service: "{{ item }}"
+        permanent: yes
+        state: enabled
+        immediate: yes
+        zone: public
+      loop:
+        - http
+        - https
+        - ftp
+        - dns
+
+    - name: Create custom service definition directory
+      file:
+        path: /etc/firewalld/services
+        state: directory
+        mode: '0755'
+
+    - name: Create custom application service
+      copy:
+        content: |
+          <?xml version="1.0" encoding="utf-8"?>
+          <service>
+            <short>Custom App</short>
+            <description>Custom web application running on port 8080</description>
+            <port protocol="tcp" port="8080"/>
+            <port protocol="tcp" port="8443"/>
+          </service>
+        dest: /etc/firewalld/services/custom-app.xml
+        mode: '0644'
+
+    - name: Reload firewalld to recognize new service
+      command: firewall-cmd --reload
+
+    - name: Enable custom service
+      firewalld:
+        service: custom-app
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+    - name: Disable unnecessary services
+      firewalld:
+        service: "{{ item }}"
+        permanent: yes
+        state: disabled
+        immediate: yes
+      loop:
+        - cockpit
+        - dhcpv6-client
+      ignore_errors: yes
+
+    - name: Check enabled services in public zone
+      command: firewall-cmd --zone=public --list-services
+      register: enabled_services
+
+    - name: Display enabled services
+      debug:
+        msg: "Enabled services: {{ enabled_services.stdout }}"
+EOF
