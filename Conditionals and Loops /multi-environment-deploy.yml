@@ -1,0 +1,139 @@
+---
+- name: Multi-Environment Application Deployment
+  hosts: all
+  gather_facts: yes
+  vars:
+    app_name: "mywebapp"
+    app_version: "1.0.0"
+    environment: "{{ env | default('development') }}"
+    
+    environment_configs:
+      development:
+        database_host: "localhost"
+        debug_mode: true
+        log_level: "DEBUG"
+        backup_enabled: false
+        monitoring_enabled: false
+      staging:
+        database_host: "staging-db.example.com"
+        debug_mode: true
+        log_level: "INFO"
+        backup_enabled: true
+        monitoring_enabled: true
+      production:
+        database_host: "prod-db.example.com"
+        debug_mode: false
+        log_level: "ERROR"
+        backup_enabled: true
+        monitoring_enabled: true
+        
+    required_packages:
+      - name: "httpd"
+        environments: ["development", "staging", "production"]
+      - name: "php"
+        environments: ["development", "staging", "production"]
+      - name: "mysql"
+        environments: ["development", "staging", "production"]
+      - name: "redis"
+        environments: ["staging", "production"]
+      - name: "memcached"
+        environments: ["production"]
+        
+  tasks:
+    - name: Validate environment parameter
+      fail:
+        msg: "Invalid environment: {{ environment }}. Must be development, staging, or production"
+      when: environment not in environment_configs
+      
+    - name: Install environment-specific packages
+      yum:
+        name: "{{ item.name }}"
+        state: present
+      loop: "{{ required_packages }}"
+      when: 
+        - environment in item.environments
+        - ansible_os_family == "RedHat"
+        
+    - name: Create application directory structure
+      file:
+        path: "/opt/{{ app_name }}/{{ item }}"
+        state: directory
+        owner: apache
+        group: apache
+        mode: '0755'
+      loop:
+        - config
+        - logs
+        - uploads
+        - cache
+        - sessions
+      when: "'httpd' in ansible_facts.packages or 'apache2' in ansible_facts.packages"
+      
+    - name: Generate environment-specific configuration
+      template:
+        src: app-config.j2
+        dest: "/opt/{{ app_name }}/config/app.conf"
+        owner: apache
+        group: apache
+        mode: '0644'
+      vars:
+        config: "{{ environment_configs[environment] }}"
+      when: environment in environment_configs
+      
+    - name: Configure log rotation (production and staging only)
+      copy:
+        content: |
+          /opt/{{ app_name }}/logs/*.log {
+              daily
+              rotate 30
+              compress
+              delaycompress
+              missingok
+              notifempty
+              create 644 apache apache
+          }
+        dest: "/etc/logrotate.d/{{ app_name }}"
+        mode: '0644'
+      when: environment in ['staging', 'production']
+      
+    - name: Setup backup cron job
+      cron:
+        name: "{{ app_name }} backup"
+        minute: "0"
+        hour: "2"
+        job: "/usr/local/bin/backup-{{ app_name }}.sh"
+        user: root
+      when: environment_configs[environment].backup_enabled == true
+      
+    - name: Install monitoring agent
+      yum:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - htop
+        - iotop
+        - nethogs
+      when: 
+        - environment_configs[environment].monitoring_enabled == true
+        - ansible_os_family == "RedHat"
+        
+    - name: Start and enable services based on environment
+      service:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      loop:
+        - httpd
+        - mysqld
+      when: environment != "development"
+      
+    - name: Display deployment summary
+      debug:
+        msg: |
+          Deployment Summary:
+          - Application: {{ app_name }} v{{ app_version }}
+          - Environment: {{ environment }}
+          - Database Host: {{ environment_configs[environment].database_host }}
+          - Debug Mode: {{ environment_configs[environment].debug_mode }}
+          - Backup Enabled: {{ environment_configs[environment].backup_enabled }}
+          - Monitoring Enabled: {{ environment_configs[environment].monitoring_enabled }}
