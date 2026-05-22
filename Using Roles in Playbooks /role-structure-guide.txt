@@ -1,0 +1,10 @@
+Ansible Role Directory Structure:
+
+tasks/     - Contains the main list of tasks to be executed by the role
+handlers/  - Contains handlers triggered by notify statements
+templates/ - Contains Jinja2 template files
+files/     - Contains files to be copied to managed nodes
+vars/      - Contains variables for the role (higher precedence)
+defaults/  - Contains default variables for the role (lower precedence)
+meta/      - Contains role metadata and dependencies
+EOF
