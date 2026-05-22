@@ -1,0 +1,2 @@
+# Create a simple text-based favicon placeholder
+echo "FAVICON" > static-files/favicon.ico
