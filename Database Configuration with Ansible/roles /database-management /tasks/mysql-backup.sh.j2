@@ -1,0 +1,13 @@
+#!/bin/bash
+BACKUP_DIR="/opt/database-backups"
+DATE=$(date +%Y%m%d_%H%M%S)
+mysqldump -u root -p'{{ mysql_root_password }}' --all-databases --single-transaction | gzip > $BACKUP_DIR/mysql_backup_$DATE.sql.gz
+find $BACKUP_DIR -name "mysql_backup_*.sql.gz" -mtime +{{ backup_retention_days }} -delete
+EOF
+cat > roles/database-management/templates/postgresql-backup.sh.j2 << 'EOF'
+#!/bin/bash
+BACKUP_DIR="/opt/database-backups"
+DATE=$(date +%Y%m%d_%H%M%S)
+sudo -u postgres pg_dumpall | gzip > $BACKUP_DIR/postgresql_backup_$DATE.sql.gz
+find $BACKUP_DIR -name "postgresql_backup_*.sql.gz" -mtime +{{ backup_retention_days }} -delete
+EOF
