@@ -1,0 +1,73 @@
+---
+- name: Configure Database Monitoring
+  hosts: database_servers
+  become: yes
+  tasks:
+    - name: Install monitoring tools
+      apt:
+        name:
+          - htop
+          - iotop
+          - netstat-nat
+        state: present
+
+    - name: Create database health check script
+      copy:
+        content: |
+          #!/bin/bash
+          echo "=== Database Server Health Check ==="
+          echo "Date: $(date)"
+          echo "Hostname: $(hostname)"
+          echo "Uptime: $(uptime)"
+          echo ""
+          echo "=== Memory Usage ==="
+          free -h
+          echo ""
+          echo "=== Disk Usage ==="
+          df -h
+          echo ""
+          echo "=== Network Connections ==="
+          netstat -tuln | grep -E ':(3306|5432)'
+          echo ""
+        dest: /usr/local/bin/db-health-check.sh
+        mode: '0755'
+
+- name: Configure MySQL Monitoring
+  hosts: mysql_servers
+  become: yes
+  tasks:
+    - name: Create MySQL status check script
+      copy:
+        content: |
+          #!/bin/bash
+          echo "=== MySQL Status Check ==="
+          systemctl status mysql --no-pager
+          echo ""
+          echo "=== MySQL Process List ==="
+          mysql -u root -p'SecureRootPass123!' -e "SHOW PROCESSLIST;"
+          echo ""
+          echo "=== MySQL Variables ==="
+          mysql -u root -p'SecureRootPass123!' -e "SHOW VARIABLES LIKE 'max_connections';"
+          mysql -u root -p'SecureRootPass123!' -e "SHOW STATUS LIKE 'Threads_connected';"
+        dest: /usr/local/bin/mysql-status.sh
+        mode: '0755'
+
+- name: Configure PostgreSQL Monitoring
+  hosts: postgresql_servers
+  become: yes
+  tasks:
+    - name: Create PostgreSQL status check script
+      copy:
+        content: |
+          #!/bin/bash
+          echo "=== PostgreSQL Status Check ==="
+          systemctl status postgresql --no-pager
+          echo ""
+          echo "=== PostgreSQL Activity ==="
+          sudo -u postgres psql -c "SELECT datname, numbackends, xact_commit, xact_rollback FROM pg_stat_database;"
+          echo ""
+          echo "=== PostgreSQL Connections ==="
+          sudo -u postgres psql -c "SELECT count(*) as active_connections FROM pg_stat_activity WHERE state = 'active';"
+        dest: /usr/local/bin/postgresql-status.sh
+        mode: '0755'
+EOF
