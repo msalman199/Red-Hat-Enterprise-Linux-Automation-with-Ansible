@@ -1,0 +1,20 @@
+---
+# Default variables for database management role
+database_type: mysql  # mysql or postgresql
+backup_enabled: true
+monitoring_enabled: true
+security_hardening: true
+backup_retention_days: 7
+backup_schedule_hour: 2
+backup_schedule_minute: 0
+
+# MySQL defaults
+mysql_root_password: "ChangeMe123!"
+mysql_port: 3306
+mysql_bind_address: "0.0.0.0"
+
+# PostgreSQL defaults
+postgresql_version: "12"
+postgresql_port: 5432
+postgresql_listen_addresses: "*"
+EOF
