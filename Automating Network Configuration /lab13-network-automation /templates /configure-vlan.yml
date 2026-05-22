@@ -1,0 +1,19 @@
+---
+- name: Configure VLAN Interface
+  hosts: all
+  become: yes
+  
+  tasks:
+    - name: Create VLAN interface
+      community.general.nmcli:
+        conn_name: "vlan100"
+        type: vlan
+        vlandev: "{{ ansible_default_ipv4.interface }}"
+        vlanid: 100
+        ip4: "192.168.100.{{ 10 + ansible_play_hosts.index(inventory_hostname) }}/24"
+        state: present
+        
+    - name: Activate VLAN interface
+      community.general.nmcli:
+        conn_name: "vlan100"
+        state: up
