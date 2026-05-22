@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  author: Lab Student
+  description: Comprehensive database management role for MySQL and PostgreSQL
+  company: Al Nafi Learning
+  license: MIT
+  min_ansible_version: 2.9
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+  galaxy_tags:
+    - database
+    - mysql
+    - postgresql
+    - automation
+
+dependencies: []
+EOF
