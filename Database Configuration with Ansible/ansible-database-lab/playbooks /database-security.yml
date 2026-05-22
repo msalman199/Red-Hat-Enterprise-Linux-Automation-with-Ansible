@@ -1,0 +1,114 @@
+---
+- name: Secure Database Installations
+  hosts: database_servers
+  become: yes
+  tasks:
+    - name: Install fail2ban for intrusion prevention
+      apt:
+        name: fail2ban
+        state: present
+
+    - name: Configure fail2ban for SSH
+      copy:
+        content: |
+          [sshd]
+          enabled = true
+          port = ssh
+          filter = sshd
+          logpath = /var/log/auth.log
+          maxretry = 3
+          bantime = 3600
+        dest: /etc/fail2ban/jail.local
+        backup: yes
+      notify: restart fail2ban
+
+    - name: Start and enable fail2ban
+      systemd:
+        name: fail2ban
+        state: started
+        enabled: yes
+
+    - name: Configure automatic security updates
+      apt:
+        name: unattended-upgrades
+        state: present
+
+    - name: Enable automatic security updates
+      lineinfile:
+        path: /etc/apt/apt.conf.d/20auto-upgrades
+        line: "{{ item }}"
+        create: yes
+      loop:
+        - 'APT::Periodic::Update-Package-Lists "1";'
+        - 'APT::Periodic::Unattended-Upgrade "1";'
+
+  handlers:
+    - name: restart fail2ban
+      systemd:
+        name: fail2ban
+        state: restarted
+
+- name: Secure MySQL Installation
+  hosts: mysql_servers
+  become: yes
+  tasks:
+    - name: Configure MySQL security settings
+      lineinfile:
+        path: /etc/mysql/mysql.conf.d/mysqld.cnf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        backup: yes
+      loop:
+        - { regexp: '^#?local-infile', line: 'local-infile = 0' }
+        - { regexp: '^#?skip-show-database', line: 'skip-show-database' }
+        - { regexp: '^#?skip-symbolic-links', line: 'skip-symbolic-links = 1' }
+      notify: restart mysql
+
+    - name: Set MySQL file permissions
+      file:
+        path: "{{ item }}"
+        owner: mysql
+        group: mysql
+        mode: '0600'
+      loop:
+        - /etc/mysql/mysql.conf.d/mysqld.cnf
+        - /var/log/mysql/error.log
+
+  handlers:
+    - name: restart mysql
+      systemd:
+        name: mysql
+        state: restarted
+
+- name: Secure PostgreSQL Installation
+  hosts: postgresql_servers
+  become: yes
+  tasks:
+    - name: Configure PostgreSQL security settings
+      postgresql_set:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+      become_user: postgres
+      loop:
+        - { name: "log_connections", value: "on" }
+        - { name: "log_disconnections", value: "on" }
+        - { name: "log_statement", value: "all" }
+        - { name: "ssl", value: "on" }
+      notify: restart postgresql
+
+    - name: Set PostgreSQL file permissions
+      file:
+        path: "{{ item }}"
+        owner: postgres
+        group: postgres
+        mode: '0600'
+      loop:
+        - /etc/postgresql/12/main/postgresql.conf
+        - /etc/postgresql/12/main/pg_hba.conf
+
+  handlers:
+    - name: restart postgresql
+      systemd:
+        name: postgresql
+        state: restarted
+EOF
