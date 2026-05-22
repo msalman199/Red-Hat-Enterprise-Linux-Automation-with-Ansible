@@ -1,0 +1,27 @@
+/* Additional styles for the website */
+.highlight {
+    background-color: #ffeb3b;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.success {
+    color: #4caf50;
+    font-weight: bold;
+}
+
+.button {
+    background-color: #2196F3;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    margin: 10px 0;
+}
+
+.button:hover {
+    background-color: #1976D2;
+}
