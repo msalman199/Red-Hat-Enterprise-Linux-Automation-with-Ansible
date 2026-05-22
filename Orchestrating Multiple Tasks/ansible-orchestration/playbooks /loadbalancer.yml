@@ -1,0 +1,76 @@
+---
+- name: "Deploy Load Balancer"
+  hosts: load_balancer
+  become: yes
+  vars:
+    backend_servers: "{{ groups['web_servers'] }}"
+    
+  pre_tasks:
+    - name: "Verify web servers are deployed"
+      uri:
+        url: "http://{{ item }}:80"
+        method: GET
+        status_code: 200
+      loop: "{{ backend_servers }}"
+      delegate_to: localhost
+      register: web_server_check
+      retries: 3
+      delay: 10
+
+    - name: "Fail if any web server is not responding"
+      fail:
+        msg: "Web server {{ item.item }} is not responding"
+      loop: "{{ web_server_check.results }}"
+      when: item.status != 200
+
+  tasks:
+    - name: "Install HAProxy"
+      yum:
+        name: haproxy
+        state: present
+
+    - name: "Configure HAProxy"
+      template:
+        src: haproxy.cfg.j2
+        dest: /etc/haproxy/haproxy.cfg
+        backup: yes
+      notify: restart haproxy
+
+    - name: "Start and enable HAProxy"
+      systemd:
+        name: haproxy
+        state: started
+        enabled: yes
+
+    - name: "Configure firewall for load balancer"
+      firewalld:
+        port: "{{ item }}"
+        permanent: yes
+        state: enabled
+        immediate: yes
+      loop:
+        - "80/tcp"
+        - "8404/tcp"  # HAProxy stats
+
+  handlers:
+    - name: restart haproxy
+      systemd:
+        name: haproxy
+        state: restarted
+
+  post_tasks:
+    - name: "Verify load balancer is working"
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}"
+        method: GET
+        status_code: 200
+      delegate_to: localhost
+      register: lb_check
+      retries: 5
+      delay: 5
+
+    - name: "Set load balancer deployment fact"
+      set_fact:
+        loadbalancer_deployed: true
+        loadbalancer_url: "http://{{ ansible_default_ipv4.address }}"
+      when: lb_check.status == 200
