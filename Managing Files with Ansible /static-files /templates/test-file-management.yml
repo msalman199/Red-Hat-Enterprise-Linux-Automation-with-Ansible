@@ -1,0 +1,55 @@
+---
+- name: Test File Management Scenarios
+  hosts: webservers
+  become: yes
+  
+  tasks:
+    - name: Test 1 - Copy with different sources
+      block:
+        - name: Copy from URL (if accessible)
+          get_url:
+            url: "https://httpd.apache.org/docs/2.4/favicon.ico"
+            dest: /tmp/downloaded-favicon.ico
+            mode: '0644'
+          ignore_errors: yes
+
+        - name: Copy with content generation
+          copy:
+            content: |
+              # Test Configuration File
+              # Created: {{ ansible_date_time.iso8601 }}
+              TEST_VALUE=success
+              SERVER={{ inventory_hostname }}
+            dest: /tmp/test-config.conf
+
+    - name: Test 2 - Template with conditional logic
+      template:
+        src: conditional-template.j2
+        dest: /tmp/conditional-output.txt
+      vars:
+        test_conditions:
+          - name: "memory_check"
+            condition: "{{ ansible_memtotal_mb > 1000 }}"
+            message: "Sufficient memory available"
+          - name: "disk_check"
+            condition: "{{ ansible_mounts[0].size_available > 1000000000 }}"
+            message: "Sufficient disk space available"
+
+    - name: Test 3 - File operations with loops
+      copy:
+        content: "Configuration for {{ item.name }}: {{ item.value }}"
+        dest: "/tmp/{{ item.name }}.conf"
+      loop:
+        - { name: "database", value: "mysql://localhost:3306" }
+        - { name: "cache", value: "redis://localhost:6379" }
+        - { name: "queue", value: "rabbitmq://localhost:5672" }
+
+    - name: Verify all test files were created
+      find:
+        paths: /tmp
+        patterns: "*.conf,*.txt,*favicon*"
+      register: test_files
+
+    - name: Display test results
+      debug:
+        msg: "Created {{ test_files.files | length }} test files"
