@@ -1,0 +1,40 @@
+---
+- name: Create application directory
+  file:
+    path: "{{ document_root }}/{{ app_name }}"
+    state: directory
+    owner: apache
+    group: apache
+    mode: '0755'
+
+- name: Deploy application configuration
+  template:
+    src: config.php.j2
+    dest: "{{ document_root }}/{{ app_name }}/config.php"
+    owner: apache
+    group: apache
+    mode: '0644'
+
+- name: Deploy main application file
+  template:
+    src: index.php.j2
+    dest: "{{ document_root }}/{{ app_name }}/index.php"
+    owner: apache
+    group: apache
+    mode: '0644'
+
+- name: Deploy database connection test
+  template:
+    src: dbtest.php.j2
+    dest: "{{ document_root }}/{{ app_name }}/dbtest.php"
+    owner: apache
+    group: apache
+    mode: '0644'
+
+- name: Create uploads directory
+  file:
+    path: "{{ document_root }}/{{ app_name }}/uploads"
+    state: directory
+    owner: apache
+    group: apache
+    mode: '0755'
