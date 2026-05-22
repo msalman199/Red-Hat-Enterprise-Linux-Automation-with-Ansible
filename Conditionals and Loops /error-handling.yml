@@ -1,0 +1,54 @@
+---
+- name: Error Handling with Conditionals and Loops
+  hosts: all
+  gather_facts: yes
+  vars:
+    critical_services:
+      - name: "sshd"
+        required: true
+      - name: "httpd"
+        required: false
+      - name: "mysqld"
+        required: false
+        
+  tasks:
+    - name: Check if critical services are running
+      service_facts:
+      
+    - name: Validate critical services status
+      debug:
+        msg: "Service {{ item.name }} is {{ 'running' if item.name in services and services[item.name].state == 'running' else 'not running' }}"
+      loop: "{{ critical_services }}"
+      when: item.required == true
+      
+    - name: Attempt to start required services
+      service:
+        name: "{{ item.name }}"
+        state: started
+      loop: "{{ critical_services }}"
+      when: 
+        - item.required == true
+        - item.name not in services or services[item.name].state != 'running'
+      ignore_errors: yes
+      register: service_start_results
+      
+    - name: Report service start failures
+      debug:
+        msg: "Failed to start {{ item.item.name }}: {{ item.msg | default('Unknown error') }}"
+      loop: "{{ service_start_results.results }}"
+      when: 
+        - service_start_results is defined
+        - item.failed is defined
+        - item.failed == true
+        
+    - name: Create backup of important files
+      copy:
+        src: "{{ item }}"
+        dest: "{{ item }}.backup.{{ ansible_date_time.epoch }}"
+        remote_src: yes
+      loop:
+        - /etc/passwd
+        - /etc/group
+        - /etc/hosts
+      when: item is exists
+      ignore_errors: yes
