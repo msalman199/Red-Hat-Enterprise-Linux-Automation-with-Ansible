@@ -1,0 +1,86 @@
+---
+- name: "Deploy Web Application Servers"
+  hosts: web_servers
+  become: yes
+  vars:
+    app_name: "webapp"
+    app_port: 8080
+    
+  pre_tasks:
+    - name: "Verify database is deployed"
+      fail:
+        msg: "Database must be deployed before web servers"
+      when: hostvars[groups['database_servers'][0]]['database_deployed'] is not defined
+
+  tasks:
+    - name: "Install web server packages"
+      yum:
+        name:
+          - httpd
+          - php
+          - php-mysql
+          - php-json
+        state: present
+
+    - name: "Create application directory"
+      file:
+        path: "/var/www/html/{{ app_name }}"
+        state: directory
+        owner: apache
+        group: apache
+        mode: '0755'
+
+    - name: "Deploy application configuration"
+      template:
+        src: app_config.php.j2
+        dest: "/var/www/html/{{ app_name }}/config.php"
+        owner: apache
+        group: apache
+        mode: '0644'
+      vars:
+        db_host: "{{ hostvars[groups['database_servers'][0]]['database_host'] }}"
+
+    - name: "Deploy sample application"
+      copy:
+        content: |
+          <?php
+          require_once 'config.php';
+          echo "<h1>Web Server: {{ ansible_hostname }}</h1>";
+          echo "<p>Database Connection: " . DB_HOST . "</p>";
+          echo "<p>Deployment Time: {{ ansible_date_time.iso8601 }}</p>";
+          ?>
+        dest: "/var/www/html/{{ app_name }}/index.php"
+        owner: apache
+        group: apache
+        mode: '0644'
+
+    - name: "Configure Apache virtual host"
+      template:
+        src: webapp.conf.j2
+        dest: "/etc/httpd/conf.d/{{ app_name }}.conf"
+      notify: restart apache
+
+    - name: "Start and enable Apache"
+      systemd:
+        name: httpd
+        state: started
+        enabled: yes
+
+    - name: "Configure firewall for HTTP"
+      firewalld:
+        service: http
+        permanent: yes
+        state: enabled
+        immediate: yes
+
+  handlers:
+    - name: restart apache
+      systemd:
+        name: httpd
+        state: restarted
+
+  post_tasks:
+    - name: "Set web server deployment fact"
+      set_fact:
+        webserver_deployed: true
+        webserver_url: "http://{{ ansible_default_ipv4.address }}/{{ app_name }}"
