@@ -1,0 +1,7 @@
+---
+server_name: web1.example.com
+server_aliases:
+  - www.web1.example.com
+  - primary.example.com
+document_root: /var/www/web1
+max_connections: 200
