@@ -1,0 +1,12 @@
+---
+# Role variables for apache-webserver (higher precedence than defaults)
+
+# These variables override defaults and are specific to this role
+apache_port: 80
+max_connections: 100
+timeout: 300
+
+# Security settings
+server_tokens: "Prod"
+server_signature: "Off"
+EOF
