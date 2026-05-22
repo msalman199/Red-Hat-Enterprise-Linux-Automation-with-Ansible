@@ -62,4 +62,5 @@
     
     - name: Display Python version
       debug:
-        
+        msg: "Python version: {{ python_version.stdout }}"
+EOF
