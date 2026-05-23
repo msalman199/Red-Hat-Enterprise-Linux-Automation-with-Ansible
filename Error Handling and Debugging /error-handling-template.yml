@@ -1,0 +1,90 @@
+---
+- name: Comprehensive Error Handling Template
+  hosts: webservers
+  become: yes
+  vars:
+    log_file: "/var/log/ansible-deployment.log"
+    notification_email: "admin@example.com"
+    
+  tasks:
+    - name: Initialize deployment logging
+      copy:
+        content: |
+          Ansible Deployment Log
+          =====================
+          Start Time: {{ ansible_date_time.iso8601 }}
+          Host: {{ inventory_hostname }}
+          Playbook: {{ ansible_play_name }}
+          
+        dest: "{{ log_file }}"
+        mode: '0644'
+    
+    - name: Main deployment block
+      block:
+        # Your main deployment tasks go here
+        - name: Example deployment task 1
+          debug:
+            msg: "Executing main deployment task 1"
+        
+        - name: Example deployment task 2
+          debug:
+            msg: "Executing main deployment task 2"
+        
+        - name: Simulate potential failure point
+          fail:
+            msg: "Simulated deployment failure"
+          when: false  # Set to true to test failure handling
+        
+        - name: Log successful deployment
+          lineinfile:
+            path: "{{ log_file }}"
+            line: "SUCCESS: Deployment completed successfully at {{ ansible_date_time.iso8601 }}"
+      
+      rescue:
+        - name: Log deployment failure
+          lineinfile:
+            path: "{{ log_file }}"
+            line: "ERROR: Deployment failed at {{ ansible_date_time.iso8601 }}"
+        
+        - name: Attempt rollback procedures
+          debug:
+            msg: "Initiating rollback procedures"
+        
+        - name: Create failure notification
+          copy:
+            content: |
+              DEPLOYMENT FAILURE NOTIFICATION
+              ==============================
+              Host: {{ inventory_hostname }}
+              Time: {{ ansible_date_time.iso8601 }}
+              Playbook: {{ ansible_play_name }}
+              
+              Please check the deployment logs for details.
+            dest: /tmp/deployment-failure-notification.txt
+            mode: '0644'
+        
+        - name: Set deployment status
+          set_fact:
+            deployment_status: "failed"
+      
+      always:
+        - name: Cleanup temporary files
+          file:
+            path: /tmp/deployment-temp
+            state: absent
+        
+        - name: Final log entry
+          lineinfile:
+            path: "{{ log_file }}"
+            line: "COMPLETED: Deployment process finished at {{ ansible_date_time.iso8601 }}"
+        
+        - name: Display final status
+          debug:
+            msg: "Deployment status: {{ deployment_status | default('success') }}"
+        
+        - name: Archive logs
+          archive:
+            path: "{{ log_file }}"
+            dest: "/tmp/deployment-logs-{{ ansible_date_time.epoch }}.tar.gz"
+            remove: no
+EOF
