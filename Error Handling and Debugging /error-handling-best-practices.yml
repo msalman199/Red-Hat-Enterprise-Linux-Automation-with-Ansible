@@ -1,0 +1,108 @@
+---
+- name: Error Handling Best Practices
+  hosts: webservers
+  become: yes
+  vars:
+    max_retries: 3
+    retry_delay: 5
+  
+  tasks:
+    - name: Robust package installation with retries
+      block:
+        - name: Update package cache
+          yum:
+            update_cache: yes
+          retries: "{{ max_retries }}"
+          delay: "{{ retry_delay }}"
+        
+        - name: Install packages with retry logic
+          yum:
+            name: 
+              - htop
+              - curl
+              - wget
+            state: present
+          retries: "{{ max_retries }}"
+          delay: "{{ retry_delay }}"
+          register: package_install
+      
+      rescue:
+        - name: Log package installation failure
+          debug:
+            msg: "Package installation failed after {{ max_retries }} attempts"
+        
+        - name: Attempt individual package installation
+          yum:
+            name: "{{ item }}"
+            state: present
+          loop:
+            - htop
+            - curl
+            - wget
+          ignore_errors: yes
+          register: individual_installs
+        
+        - name: Report individual installation results
+          debug:
+            msg: "Package {{ item.item }}: {{ 'SUCCESS' if not item.failed else 'FAILED' }}"
+          loop: "{{ individual_installs.results }}"
+    
+    - name: Service management with comprehensive error handling
+      block:
+        - name: Check if service exists
+          stat:
+            path: "/etc/systemd/system/{{ item }}.service"
+          register: service_files
+          loop:
+            - httpd
+            - nginx
+            - apache2
+        
+        - name: Start available web services
+          systemd:
+            name: "{{ item.item }}"
+            state: started
+            enabled: yes
+          loop: "{{ service_files.results }}"
+          when: item.stat.exists
+          ignore_errors: yes
+          register: service_starts
+        
+        - name: Verify service status
+          command: "systemctl is-active {{ item.item }}"
+          loop: "{{ service_starts.results }}"
+          when: item is not skipped and not item.failed
+          register: service_status
+          changed_when: false
+          ignore_errors: yes
+      
+      rescue:
+        - name: Service management failed
+          debug:
+            msg: "Service management encountered errors"
+        
+        - name: Create service status report
+          copy:
+            content: |
+              Service Status Report
+              ====================
+              {% for result in service_status.results %}
+              {% if result is not skipped %}
+              Service: {{ result.item.item }}
+              Status: {{ result.stdout | default('Unknown') }}
+              {% endif %}
+              {% endfor %}
+            dest: /tmp/service-status-report.txt
+            mode: '0644'
+      
+      always:
+        - name: Final service verification
+          shell: "systemctl list-units --type=service --state=active | grep -E '(httpd|nginx|apache2)'"
+          register: active_web_services
+          changed_when: false
+          ignore_errors: yes
+        
+        - name: Display active web services
+          debug:
+            msg: "Active web services: {{ active_web_services.stdout_lines | default(['None found']) }}"
+EOF
