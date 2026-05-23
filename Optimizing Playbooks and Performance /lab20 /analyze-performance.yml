@@ -1,0 +1,89 @@
+---
+- name: Analyze Playbook Performance Results
+  hosts: localhost
+  gather_facts: yes
+  vars:
+    analysis_results: {}
+    
+  tasks:
+    - name: Find benchmark result files
+      find:
+        paths: /tmp/ansible-benchmarks
+        patterns: "benchmark_report_*.txt"
+      register: benchmark_files
+      
+    - name: Read benchmark results
+      slurp:
+        src: "{{ item.path }}"
+      register: benchmark_content
+      loop: "{{ benchmark_files.files }}"
+      
+    - name: Parse performance data
+      set_fact:
+        performance_data: "{{ performance_data | default([]) + [parsed_data] }}"
+      vars:
+        parsed_data:
+          file: "{{ item.item.path }}"
+          content: "{{ item.content | b64decode }}"
+          timestamp: "{{ item.item.path | regex_search('\\d{8}_\\d{6}') }}"
+      loop: "{{ benchmark_content.results }}"
+      
+    - name: Generate performance summary
+      debug:
+        msg: |
+          Performance Analysis Summary:
+          ============================
+          Total benchmark files analyzed: {{ performance_data | length }}
+          Latest benchmark: {{ performance_data | map(attribute='timestamp') | max }}
+          
+          Recommendations:
+          - Use role-based playbooks for better maintainability
+          - Implement async execution for long-running tasks
+          - Optimize fork count based on your infrastructure
+          - Use fact caching to reduce gathering overhead
+          - Implement proper error handling and retries
+          
+    - name: Create performance dashboard data
+      copy:
+        content: |
+          {
+            "benchmark_summary": {
+              "total_files": {{ performance_data | length }},
+              "latest_run": "{{ performance_data | map(attribute='timestamp') | max }}",
+              "analysis_date": "{{ ansible_date_time.iso8601 }}",
+              "recommendations": [
+                "Use modular role-based playbooks",
+                "Implement asynchronous execution",
+                "Optimize fork count for your environment",
+                "Enable fact caching",
+                "Use proper error handling"
+              ]
+            }
+          }
+        dest: /tmp/ansible-benchmarks/dashboard-data.json
+        
+    - name: Display optimization recommendations
+      debug:
+        msg: |
+          Key Performance Optimization Techniques Applied:
+          
+          1. MODULARITY: Split monolithic playbooks into roles
+             - Improved maintainability and reusability
+             - Better error isolation and debugging
+             - Parallel development capabilities
+          
+          2. ASYNCHRONOUS EXECUTION: Used async and poll for long tasks
+             - Reduced total execution time
+             - Better resource utilization
+             - Improved user experience
+          
+          3. TASK DELEGATION: Optimized task placement
+             - Reduced network overhead
+             - Centralized resource-intensive operations
+             - Improved scalability
+          
+          4. PARALLEL PROCESSING: Optimized fork count and strategy
+             - Faster execution across multiple hosts
+             - Better resource utilization
+             - Scalable to large environments
+EOF
