@@ -1,0 +1,11 @@
+---
+- name: Test Vault Error Handling
+  hosts: localhost
+  vars_files:
+    - ../vars/database_secrets.yml
+  
+  tasks:
+    - name: This will fail without vault password
+      debug:
+        msg: "Database user: {{ database_username }}"
+EOF
