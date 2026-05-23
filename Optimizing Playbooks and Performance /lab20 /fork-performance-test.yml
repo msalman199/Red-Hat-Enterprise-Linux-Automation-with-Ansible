@@ -1,0 +1,32 @@
+---
+- name: "Test with {{ fork_count }} forks"
+  block:
+    - name: Update ansible.cfg with current fork count
+      lineinfile:
+        path: ansible.cfg
+        regexp: '^forks'
+        line: "forks = {{ fork_count }}"
+        
+    - name: Record test start time
+      set_fact:
+        fork_test_start: "{{ ansible_date_time.epoch }}"
+        
+    - name: Run test playbook
+      command: ansible-playbook optimized-playbook.yml --check -v
+      register: fork_test_result
+      ignore_errors: yes
+      
+    - name: Record test end time
+      set_fact:
+        fork_test_end: "{{ ansible_date_time.epoch }}"
+        
+    - name: Store fork test results
+      set_fact:
+        performance_metrics: "{{ performance_metrics + [metric] }}"
+      vars:
+        metric:
+          forks: "{{ fork_count }}"
+          execution_time: "{{ fork_test_end | int - fork_test_start | int }}"
+          status: "{{ 'SUCCESS' if fork_test_result.rc == 0 else 'FAILED' }}"
+          tasks_executed: "{{ fork_test_result.stdout_lines | select('match', '.*TASK.*') | list | length }}"
+EOF
