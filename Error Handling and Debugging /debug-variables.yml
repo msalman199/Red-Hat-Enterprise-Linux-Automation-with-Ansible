@@ -1,0 +1,35 @@
+---
+- name: Debug Module Demonstration
+  hosts: webservers
+  gather_facts: yes
+  vars:
+    app_name: "MyWebApp"
+    app_version: "2.1.0"
+    environment: "production"
+    server_ports:
+      - 80
+      - 443
+      - 8080
+  
+  tasks:
+    - name: Debug simple string variable
+      debug:
+        msg: "Application name is: {{ app_name }}"
+    
+    - name: Debug variable with formatting
+      debug:
+        msg: "Running {{ app_name }} version {{ app_version }} in {{ environment }} environment"
+    
+    - name: Debug list variable
+      debug:
+        var: server_ports
+    
+    - name: Debug system facts
+      debug:
+        msg: "Server {{ inventory_hostname }} is running {{ ansible_distribution }} {{ ansible_distribution_version }}"
+    
+    - name: Debug with conditional output
+      debug:
+        msg: "This is a production server"
+      when: environment == "production"
+EOF
