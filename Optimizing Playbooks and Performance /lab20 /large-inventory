@@ -1,0 +1,22 @@
+[webservers]
+web01 ansible_host=192.168.1.10
+web02 ansible_host=192.168.1.11
+web03 ansible_host=192.168.1.12
+web04 ansible_host=192.168.1.13
+web05 ansible_host=192.168.1.14
+
+[databases]
+db01 ansible_host=192.168.1.20
+db02 ansible_host=192.168.1.21
+
+[loadbalancers]
+lb01 ansible_host=192.168.1.30
+
+[monitoring]
+mon01 ansible_host=192.168.1.40
+
+[all:vars]
+ansible_user=ansible
+ansible_ssh_private_key_file=~/.ssh/id_rsa
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+EOF
