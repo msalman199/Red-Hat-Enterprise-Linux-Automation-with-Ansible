@@ -1,0 +1,27 @@
+---
+- name: Deploy Web Application Infrastructure
+  hosts: webservers
+  become: yes
+  gather_facts: yes
+  
+  roles:
+    - role: security
+      tags: security
+    - role: database
+      tags: database
+    - role: webserver
+      tags: webserver
+    - role: application
+      tags: application
+    - role: monitoring
+      tags: monitoring
+
+  post_tasks:
+    - name: Verify web service is accessible
+      uri:
+        url: "http://{{ ansible_fqdn }}"
+        method: GET
+        status_code: 200
+      delegate_to: localhost
+      tags: verification
+EOF
