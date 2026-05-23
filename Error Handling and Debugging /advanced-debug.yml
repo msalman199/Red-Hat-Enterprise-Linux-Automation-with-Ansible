@@ -1,0 +1,45 @@
+---
+- name: Advanced Debug Techniques
+  hosts: webservers
+  gather_facts: yes
+  vars:
+    users:
+      - name: "alice"
+        role: "admin"
+        active: true
+      - name: "bob"
+        role: "user"
+        active: false
+      - name: "charlie"
+        role: "developer"
+        active: true
+  
+  tasks:
+    - name: Debug loop with item details
+      debug:
+        msg: "User: {{ item.name }}, Role: {{ item.role }}, Active: {{ item.active }}"
+      loop: "{{ users }}"
+    
+    - name: Debug filtered results
+      debug:
+        msg: "Active user found: {{ item.name }}"
+      loop: "{{ users }}"
+      when: item.active == true
+    
+    - name: Debug variable type and content
+      debug:
+        msg: 
+          - "Variable name: users"
+          - "Variable type: {{ users | type_debug }}"
+          - "Number of users: {{ users | length }}"
+    
+    - name: Debug with verbosity levels
+      debug:
+        msg: "This message appears only with -v flag"
+        verbosity: 1
+    
+    - name: Debug detailed system information
+      debug:
+        var: ansible_all_ipv4_addresses
+      when: ansible_all_ipv4_addresses is defined
+EOF
