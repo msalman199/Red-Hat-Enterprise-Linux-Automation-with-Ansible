@@ -1,0 +1,13 @@
+---
+database_type: mysql
+database_packages:
+  - mariadb-server
+  - mariadb
+  - python3-PyMySQL
+database_service: mariadb
+database_config_template: my.cnf.j2
+database_config_path: /etc/my.cnf.d/server.cnf
+app_database_name: webapp
+app_database_user: webuser
+app_database_password: "{{ vault_db_password | default('changeme') }}"
+EOF
