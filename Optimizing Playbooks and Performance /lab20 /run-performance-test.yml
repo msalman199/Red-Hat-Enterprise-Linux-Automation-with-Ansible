@@ -1,0 +1,34 @@
+---
+- name: "Execute {{ test_name }}"
+  block:
+    - name: Record test start time
+      set_fact:
+        current_test_start: "{{ ansible_date_time.epoch }}"
+        
+    - name: Run playbook with timing
+      command: >
+        ansible-playbook {{ playbook_to_test }}
+        -i inventory
+        --check
+        -v
+      register: playbook_result
+      ignore_errors: yes
+      
+    - name: Record test end time
+      set_fact:
+        current_test_end: "{{ ansible_date_time.epoch }}"
+        
+    - name: Calculate execution time
+      set_fact:
+        execution_time: "{{ current_test_end | int - current_test_start | int }}"
+        
+    - name: Store test results
+      set_fact:
+        test_results: "{{ test_results + [test_result] }}"
+      vars:
+        test_result:
+          name: "{{ test_name }}"
+          execution_time: "{{ execution_time }}"
+          status: "{{ 'PASSED' if playbook_result.rc == 0 else 'FAILED' }}"
+          output_lines: "{{ playbook_result.stdout_lines | length }}"
+EOF
