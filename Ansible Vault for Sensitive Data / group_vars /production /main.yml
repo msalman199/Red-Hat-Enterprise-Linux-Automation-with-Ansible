@@ -1,0 +1,6 @@
+---
+environment: production
+database_host: prod-db.example.com
+api_endpoint: https://api.example.com
+debug_enabled: false
+EOF
