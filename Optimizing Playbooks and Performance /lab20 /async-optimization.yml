@@ -1,0 +1,60 @@
+---
+- name: Demonstrate Asynchronous Task Execution
+  hosts: all
+  become: yes
+  gather_facts: yes
+  
+  tasks:
+    - name: Start long-running package updates (async)
+      yum:
+        name: '*'
+        state: latest
+      async: 300  # Maximum time to wait (5 minutes)
+      poll: 0     # Don't wait for completion
+      register: package_update_job
+      
+    - name: Start service configuration (async)
+      service:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      loop:
+        - chronyd
+        - rsyslog
+      async: 60
+      poll: 0
+      register: service_jobs
+      
+    - name: Perform other tasks while async jobs run
+      debug:
+        msg: "Performing other configuration tasks..."
+        
+    - name: Configure system settings
+      sysctl:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+        state: present
+        reload: yes
+      loop:
+        - { name: 'net.ipv4.ip_forward', value: '0' }
+        - { name: 'net.ipv4.conf.all.rp_filter', value: '1' }
+        
+    - name: Wait for package update to complete
+      async_status:
+        jid: "{{ package_update_job.ansible_job_id }}"
+      register: package_result
+      until: package_result.finished
+      retries: 30
+      delay: 10
+      when: package_update_job.ansible_job_id is defined
+      
+    - name: Check async service jobs
+      async_status:
+        jid: "{{ item.ansible_job_id }}"
+      register: service_results
+      until: service_results.finished
+      retries: 10
+      delay: 5
+      loop: "{{ service_jobs.results }}"
+      when: item.ansible_job_id is defined
+EOF
