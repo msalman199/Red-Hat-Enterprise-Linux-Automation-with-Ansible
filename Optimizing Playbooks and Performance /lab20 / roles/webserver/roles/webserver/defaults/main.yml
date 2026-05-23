@@ -1,0 +1,11 @@
+---
+webserver_packages:
+  - httpd
+  - mod_ssl
+webserver_service: httpd
+webserver_config_template: httpd.conf.j2
+webserver_config_path: /etc/httpd/conf/httpd.conf
+webserver_firewall_services:
+  - http
+  - https
+EOF
