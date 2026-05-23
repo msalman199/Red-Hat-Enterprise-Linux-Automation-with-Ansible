@@ -1,0 +1,126 @@
+---
+- name: Advanced Error Handling with Blocks
+  hosts: webservers
+  become: yes
+  vars:
+    critical_services:
+      - httpd
+      - nginx
+      - mysql
+  
+  tasks:
+    - name: Web server configuration block
+      block:
+        - name: Install web server
+          yum:
+            name: httpd
+            state: present
+        
+        - name: Start web server
+          systemd:
+            name: httpd
+            state: started
+            enabled: yes
+        
+        - name: Create web content
+          copy:
+            content: "<h1>Web server is running!</h1>"
+            dest: /var/www/html/index.html
+            mode: '0644'
+        
+        - name: Test web server response
+          uri:
+            url: "http://{{ inventory_hostname }}"
+            method: GET
+          delegate_to: localhost
+      
+      rescue:
+        - name: Log web server setup failure
+          debug:
+            msg: "Web server setup failed. Attempting alternative configuration."
+        
+        - name: Install alternative web server
+          yum:
+            name: nginx
+            state: present
+          ignore_errors: yes
+        
+        - name: Configure alternative web server
+          copy:
+            content: "<h1>Alternative web server running!</h1>"
+            dest: /usr/share/nginx/html/index.html
+            mode: '0644'
+          ignore_errors: yes
+      
+      always:
+        - name: Log completion status
+          debug:
+            msg: "Web server configuration attempt completed at {{ ansible_date_time.iso8601 }}"
+        
+        - name: Check final service status
+          command: systemctl is-active httpd nginx
+          register: service_status
+          ignore_errors: yes
+          changed_when: false
+        
+        - name: Report service status
+          debug:
+            var: service_status.stdout_lines
+    
+    - name: Database configuration with nested error handling
+      block:
+        - name: Attempt primary database setup
+          block:
+            - name: Install MySQL
+              yum:
+                name: mysql-server
+                state: present
+            
+            - name: Start MySQL service
+              systemd:
+                name: mysqld
+                state: started
+                enabled: yes
+          
+          rescue:
+            - name: Try alternative database
+              debug:
+                msg: "MySQL installation failed, trying MariaDB"
+            
+            - name: Install MariaDB
+              yum:
+                name: mariadb-server
+                state: present
+            
+            - name: Start MariaDB service
+              systemd:
+                name: mariadb
+                state: started
+                enabled: yes
+      
+      rescue:
+        - name: Database setup completely failed
+          debug:
+            msg: "All database installation attempts failed"
+        
+        - name: Create failure report
+          copy:
+            content: |
+              Database Setup Failure Report
+              ============================
+              Time: {{ ansible_date_time.iso8601 }}
+              Host: {{ inventory_hostname }}
+              Error: Unable to install any database server
+            dest: /tmp/db-failure-report.txt
+            mode: '0644'
+      
+      always:
+        - name: Cleanup temporary files
+          file:
+            path: /tmp/setup-temp
+            state: absent
+        
+        - name: Final status report
+          debug:
+            msg: "Database configuration block completed"
+EOF
