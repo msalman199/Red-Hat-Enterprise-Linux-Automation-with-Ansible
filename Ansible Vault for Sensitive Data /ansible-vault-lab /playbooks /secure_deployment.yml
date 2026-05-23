@@ -1,0 +1,47 @@
+---
+- name: Secure Application Deployment
+  hosts: webservers
+  gather_facts: yes
+  vars_files:
+    - ../vars/database_secrets.yml
+    - ../vars/user_secrets.yml
+    - ../vars/api_secrets.yml
+  
+  tasks:
+    - name: Display server information (safe)
+      debug:
+        msg: "Deploying to {{ ansible_hostname }}"
+    
+    - name: Create application configuration directory
+      file:
+        path: /tmp/app-config
+        state: directory
+        mode: '0750'
+      become: yes
+    
+    - name: Generate database configuration file
+      template:
+        src: ../templates/database.conf.j2
+        dest: /tmp/app-config/database.conf
+        mode: '0600'
+      become: yes
+    
+    - name: Generate API configuration file
+      template:
+        src: ../templates/api.conf.j2
+        dest: /tmp/app-config/api.conf
+        mode: '0600'
+      become: yes
+    
+    - name: Create service user with encrypted password
+      user:
+        name: appservice
+        password: "{{ service_account_password | password_hash('sha512') }}"
+        shell: /bin/bash
+        create_home: yes
+      become: yes
+    
+    - name: Display configuration status (without sensitive data)
+      debug:
+        msg: "Configuration files created successfully for user: {{ database_username }}"
+EOF
