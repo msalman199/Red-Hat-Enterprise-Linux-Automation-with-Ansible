@@ -1,0 +1,59 @@
+---
+- name: Parallel Execution Optimization
+  hosts: all
+  become: yes
+  gather_facts: yes
+  strategy: free  # Allow hosts to run independently
+  
+  tasks:
+    - name: Update system packages (parallel across hosts)
+      package:
+        name: '*'
+        state: latest
+      async: 600
+      poll: 0
+      register: update_job
+      
+    - name: Configure multiple services in parallel
+      service:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      loop:
+        - firewalld
+        - chronyd
+        - rsyslog
+      async: 30
+      poll: 0
+      register: service_jobs
+      
+    - name: Create multiple directories simultaneously
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - /opt/app1
+        - /opt/app2
+        - /opt/app3
+        - /var/log/apps
+        - /etc/apps
+      
+    - name: Wait for package updates to complete
+      async_status:
+        jid: "{{ update_job.ansible_job_id }}"
+      register: update_result
+      until: update_result.finished
+      retries: 60
+      delay: 10
+      when: update_job.ansible_job_id is defined
+      
+    - name: Verify all services are running
+      service:
+        name: "{{ item }}"
+        state: started
+      loop:
+        - firewalld
+        - chronyd
+        - rsyslog
+EOF
