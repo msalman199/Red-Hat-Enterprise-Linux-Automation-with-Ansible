@@ -1,0 +1,58 @@
+---
+- name: Demonstrate Task Delegation for Performance
+  hosts: webservers
+  become: yes
+  gather_facts: yes
+  
+  tasks:
+    - name: Generate SSL certificate on control node
+      command: >
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048
+        -keyout /tmp/{{ inventory_hostname }}.key
+        -out /tmp/{{ inventory_hostname }}.crt
+        -subj "/C=US/ST=State/L=City/O=Organization/CN={{ ansible_fqdn }}"
+      delegate_to: localhost
+      run_once: true
+      
+    - name: Download large files on control node (once)
+      get_url:
+        url: "{{ item.url }}"
+        dest: "/tmp/{{ item.name }}"
+        mode: '0644'
+      loop:
+        - { url: 'https://releases.ubuntu.com/20.04/ubuntu-20.04.6-desktop-amd64.iso', name: 'ubuntu.iso' }
+      delegate_to: localhost
+      run_once: true
+      when: download_large_files | default(false)
+      
+    - name: Perform DNS lookups on control node
+      command: nslookup {{ ansible_fqdn }}
+      delegate_to: localhost
+      register: dns_result
+      
+    - name: Log deployment status to central server
+      uri:
+        url: "http://monitoring-server/api/deployments"
+        method: POST
+        body_format: json
+        body:
+          hostname: "{{ inventory_hostname }}"
+          status: "deploying"
+          timestamp: "{{ ansible_date_time.iso8601 }}"
+      delegate_to: localhost
+      ignore_errors: yes
+      
+    - name: Copy files from control node to targets
+      copy:
+        src: "/tmp/{{ inventory_hostname }}.crt"
+        dest: "/etc/ssl/certs/server.crt"
+        mode: '0644'
+      notify: restart webserver
+      
+    - name: Verify connectivity from control node
+      wait_for:
+        host: "{{ ansible_fqdn }}"
+        port: 80
+        timeout: 30
+      delegate_to: localhost
+EOF
