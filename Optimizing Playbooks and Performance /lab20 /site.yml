@@ -1,0 +1,15 @@
+---
+- import_playbook: optimized-playbook.yml
+
+- name: Post-deployment tasks
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: Display deployment summary
+      debug:
+        msg: |
+          Deployment completed successfully!
+          Web server: {{ ansible_fqdn }}
+          Database: {{ database_type }}
+          Application directory: {{ app_directory }}
+EOF
