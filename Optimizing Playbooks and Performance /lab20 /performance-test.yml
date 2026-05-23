@@ -1,0 +1,37 @@
+---
+- name: Performance Testing Framework
+  hosts: localhost
+  gather_facts: no
+  vars:
+    test_results: []
+    
+  tasks:
+    - name: Record test start time
+      set_fact:
+        test_start_time: "{{ ansible_date_time.epoch }}"
+        
+    - name: Test original monolithic playbook performance
+      include_tasks: run-performance-test.yml
+      vars:
+        test_name: "Monolithic Playbook"
+        playbook_to_test: "large-playbook.yml"
+        
+    - name: Test optimized role-based playbook performance
+      include_tasks: run-performance-test.yml
+      vars:
+        test_name: "Role-based Playbook"
+        playbook_to_test: "optimized-playbook.yml"
+        
+    - name: Test async optimization performance
+      include_tasks: run-performance-test.yml
+      vars:
+        test_name: "Async Optimized"
+        playbook_to_test: "async-optimization.yml"
+        
+    - name: Generate performance report
+      template:
+        src: performance-report.j2
+        dest: "/tmp/performance-report-{{ ansible_date_time.epoch }}.html"
+      vars:
+        total_test_time: "{{ ansible_date_time.epoch | int - test_start_time | int }}"
+EOF
