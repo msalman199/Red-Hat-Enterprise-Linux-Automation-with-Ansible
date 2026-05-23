@@ -1,0 +1,44 @@
+---
+- name: Monitor Playbook Performance
+  hosts: localhost
+  gather_facts: yes
+  vars:
+    performance_metrics: []
+    
+  tasks:
+    - name: Create performance log directory
+      file:
+        path: /tmp/ansible-performance
+        state: directory
+        mode: '0755'
+        
+    - name: Start system resource monitoring
+      shell: |
+        (while true; do
+          echo "$(date): CPU: $(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1), MEM: $(free | grep Mem | awk '{printf "%.2f", $3/$2 * 100.0}')" >> /tmp/ansible-performance/system-metrics.log
+          sleep 5
+        done) &
+        echo $! > /tmp/ansible-performance/monitor.pid
+      
+    - name: Run performance test with different fork values
+      include_tasks: fork-performance-test.yml
+      loop:
+        - 5
+        - 10
+        - 20
+        - 50
+      loop_control:
+        loop_var: fork_count
+        
+    - name: Stop system monitoring
+      shell: |
+        if [ -f /tmp/ansible-performance/monitor.pid ]; then
+          kill $(cat /tmp/ansible-performance/monitor.pid)
+          rm /tmp/ansible-performance/monitor.pid
+        fi
+        
+    - name: Generate performance comparison report
+      template:
+        src: fork-comparison-report.j2
+        dest: /tmp/ansible-performance/fork-comparison.html
+EOF
