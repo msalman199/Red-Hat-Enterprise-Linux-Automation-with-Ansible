@@ -1,0 +1,8 @@
+---
+app_directory: /var/www/html
+app_user: apache
+app_group: apache
+app_files:
+  - index.php
+  - style.css
+EOF
