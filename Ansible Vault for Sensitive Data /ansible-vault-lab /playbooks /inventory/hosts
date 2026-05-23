@@ -1,0 +1,6 @@
+[webservers]
+localhost ansible_connection=local
+
+[databases]
+localhost ansible_connection=local
+EOF
