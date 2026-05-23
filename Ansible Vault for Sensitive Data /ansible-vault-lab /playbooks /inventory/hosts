@@ -4,3 +4,13 @@ localhost ansible_connection=local
 [databases]
 localhost ansible_connection=local
 EOF
+[development]
+localhost ansible_connection=local
+
+[production]
+localhost ansible_connection=local
+
+[webservers:children]
+development
+production
+EOF
