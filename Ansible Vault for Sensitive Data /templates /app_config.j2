@@ -1,0 +1,19 @@
+# {{ environment | upper }} Environment Configuration
+# Generated on {{ ansible_date_time.iso8601 }}
+
+[application]
+name = MyWebApp
+environment = {{ environment }}
+debug = {{ debug_enabled }}
+
+[database]
+host = {{ database_host }}
+password = {{ vault_database_password }}
+
+[api]
+endpoint = {{ api_endpoint }}
+secret = {{ vault_api_secret }}
+
+[ssl]
+private_key = {{ vault_ssl_key }}
+EOF
