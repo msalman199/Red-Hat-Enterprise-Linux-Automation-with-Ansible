@@ -1,0 +1,6 @@
+---
+environment: development
+database_host: dev-db.example.com
+api_endpoint: https://api-dev.example.com
+debug_enabled: true
+EOF
