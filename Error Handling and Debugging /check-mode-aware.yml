@@ -1,0 +1,37 @@
+---
+- name: Check Mode Aware Playbook
+  hosts: webservers
+  become: yes
+  
+  tasks:
+    - name: Check if running in check mode
+      debug:
+        msg: "Running in check mode - no actual changes will be made"
+      when: ansible_check_mode
+    
+    - name: Check if running in normal mode
+      debug:
+        msg: "Running in normal mode - changes will be applied"
+      when: not ansible_check_mode
+    
+    - name: Create directory (check mode safe)
+      file:
+        path: /tmp/test-directory
+        state: directory
+        mode: '0755'
+    
+    - name: Gather directory information
+      stat:
+        path: /tmp/test-directory
+      register: dir_info
+    
+    - name: Display directory status
+      debug:
+        msg: "Directory exists: {{ dir_info.stat.exists }}"
+      when: not ansible_check_mode
+    
+    - name: Display check mode message
+      debug:
+        msg: "Directory would be created (check mode)"
+      when: ansible_check_mode
+EOF
