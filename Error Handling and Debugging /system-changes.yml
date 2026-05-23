@@ -1,0 +1,47 @@
+---
+- name: System Configuration Changes
+  hosts: webservers
+  become: yes
+  vars:
+    packages_to_install:
+      - htop
+      - curl
+      - wget
+    service_name: "httpd"
+    config_file: "/etc/httpd/conf/httpd.conf"
+  
+  tasks:
+    - name: Install required packages
+      yum:
+        name: "{{ packages_to_install }}"
+        state: present
+    
+    - name: Create application directory
+      file:
+        path: /opt/myapp
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+    
+    - name: Create configuration file
+      copy:
+        content: |
+          # Application Configuration
+          app_name={{ app_name | default('DefaultApp') }}
+          debug_mode=false
+          log_level=info
+        dest: /opt/myapp/config.conf
+        mode: '0644'
+    
+    - name: Start and enable service
+      systemd:
+        name: "{{ service_name }}"
+        state: started
+        enabled: yes
+      ignore_errors: yes
+    
+    - name: Display completion message
+      debug:
+        msg: "System configuration completed successfully"
+EOF
