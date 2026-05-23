@@ -1,0 +1,28 @@
+---
+- name: Create application directory
+  file:
+    path: "{{ app_directory }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+
+- name: Deploy application files
+  copy:
+    src: "{{ item }}"
+    dest: "{{ app_directory }}/"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0644'
+  loop: "{{ app_files }}"
+  notify: restart webserver
+
+- name: Configure application
+  template:
+    src: app-config.php.j2
+    dest: "{{ app_directory }}/config.php"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0640'
+  notify: restart webserver
+EOF
