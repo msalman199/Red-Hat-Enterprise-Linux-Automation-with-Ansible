@@ -1,0 +1,23 @@
+ServerRoot /etc/httpd
+Listen 80
+Listen 443 ssl
+
+User apache
+Group apache
+
+ServerAdmin admin@{{ ansible_fqdn }}
+ServerName {{ ansible_fqdn }}
+
+DocumentRoot /var/www/html
+
+<Directory "/var/www/html">
+    AllowOverride None
+    Require all granted
+</Directory>
+
+ErrorLog logs/error_log
+CustomLog logs/access_log combined
+
+LoadModule ssl_module modules/mod_ssl.so
+Include conf.d/*.conf
+EOF
