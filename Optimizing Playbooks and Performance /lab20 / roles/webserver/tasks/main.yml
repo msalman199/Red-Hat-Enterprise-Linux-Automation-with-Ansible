@@ -1,0 +1,29 @@
+---
+- name: Install web server packages
+  package:
+    name: "{{ webserver_packages }}"
+    state: present
+  notify: restart webserver
+
+- name: Configure web server
+  template:
+    src: "{{ webserver_config_template }}"
+    dest: "{{ webserver_config_path }}"
+    backup: yes
+  notify: restart webserver
+
+- name: Start and enable web server
+  service:
+    name: "{{ webserver_service }}"
+    state: started
+    enabled: yes
+
+- name: Configure firewall for web server
+  firewalld:
+    service: "{{ item }}"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  loop: "{{ webserver_firewall_services }}"
+  when: ansible_facts['os_family'] == "RedHat"
+EOF
